@@ -42,8 +42,15 @@ export class MapElfParser {
 
       const m = regionRx.exec(l);
       if (m) {
+        const name = m[1];
+        if (this.isCatchAllRegion(name)) {
+          if (this.debug) {
+            console.log(`[STM32 Parser] Skipping catch-all region: ${name}`);
+          }
+          continue;
+        }
         regs.push({
-          name: m[1],
+          name,
           startAddress: parseInt(m[2], 16),
           size: parseInt(m[3], 16),
           used: 0,
@@ -53,6 +60,20 @@ export class MapElfParser {
     }
 
     return regs;
+  }
+
+  private isCatchAllRegion(name: string): boolean {
+    const normalized = name.toLowerCase();
+    if (normalized.includes('default')) {
+      return true;
+    }
+    if (normalized.includes('catch-all') || normalized.includes('catchall')) {
+      return true;
+    }
+    if (name.startsWith('*') && name.endsWith('*')) {
+      return true;
+    }
+    return false;
   }
 
   private parseSections(elfFile: string, regions: Region[]): void {
