@@ -112,7 +112,8 @@
         {
           "id": "buildAnalyzerEnhanced",
           "name": "STM32 Build Analyzer",
-          "type": "webview"
+          "type": "webview",
+          "icon": "images/icon.png"
         }
       ]
     }
