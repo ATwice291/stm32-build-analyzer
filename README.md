@@ -92,6 +92,17 @@ This fork removes that dependency, adds broader file handling, and enhances the 
 
 The extension auto-detects `.map` + `.elf` files in common build folders. If your build outputs use different names or the ELF has no extension, configure a manual pair so the analyzer can still select the correct files.
 
+### How auto-detection works
+
+1. If **both** `mapFilePath` and `elfFilePath` are set and point to readable files, the extension uses them directly and skips scanning.
+2. Otherwise, it scans common build folders like `build`, `Release`, `Debug`, `out`, and `output`. If none are found, it falls back to scanning the entire workspace.
+3. If multiple candidates are found, you will be prompted to pick the build output (or a manual pair).
+
+### Toolchain path behavior
+
+When `toolchainPath` is set, the extension uses the `arm-none-eabi-objdump` and `arm-none-eabi-nm` binaries from that directory.  
+If it is **not** set (or the binaries are not found), it falls back to using those tools from your system `PATH`.
+
 ### Settings reference
 
 | Setting | Type | Default | Description |
