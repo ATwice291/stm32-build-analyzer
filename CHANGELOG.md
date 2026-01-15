@@ -1,5 +1,14 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- Manual map/elf pairs (settings and command) for builds with non-matching outputs.
+- Symbol sorting by name/address/size within sections in the analyzer view.
+
+### Changed
+- Auto-detection and toolchainPath behavior documented in README.
+
 ## [1.1.2] – 2025‑06‑20
 
 ### Added
