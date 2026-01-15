@@ -21,6 +21,12 @@ export function activate(context: vscode.ExtensionContext) {
   provider = new BuildAnalyzerProvider(context);
 
   context.subscriptions.push(
+    vscode.commands.registerCommand('stm32BuildAnalyzerEnhanced.openTab', async () => {
+      if (debug) {console.log('[STM32 Extension] Command: openTab');}
+      await vscode.commands.executeCommand(
+        'workbench.view.extension.buildAnalyzerEnhancedPanel'
+      );
+    }),
     vscode.commands.registerCommand('stm32BuildAnalyzerEnhanced.refresh', () => {
       if (debug) {console.log('[STM32 Extension] Command: refresh');}
       return provider.refresh();

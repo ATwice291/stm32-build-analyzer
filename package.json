@@ -34,6 +34,10 @@
         "title": "STM32 Build Analyzer Refresh Paths"
       },
       {
+        "command": "stm32BuildAnalyzerEnhanced.refreshPaths",
+        "title": "STM32 Build Analyzer Change Build Folder"
+      },
+      {
         "command": "stm32BuildAnalyzerEnhanced.addManualPair",
         "title": "STM32 Build Analyzer Add Manual Build Pair"
       }
