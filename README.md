@@ -81,6 +81,7 @@ This fork removes that dependency, adds broader file handling, and enhances the 
 - Open the Command Palette (`Ctrl+Shift+P`) and run:
   - `STM32 Build Analyzer` – opens the main view
   - `STM32 Build Analyzer Refresh Paths` – re-detects build output folder
+  - `STM32 Build Analyzer Add Manual Build Pair` – add a manual map/elf pair via prompts
 - Analyzer view updates automatically when build output files change.
 - Use the **Sort** dropdown in the panel to order regions/sections/symbols by size.
 
