@@ -161,7 +161,24 @@ export class WebviewRenderer {
                 #refreshPathsButton:hover {
                     background-color: var(--vscode-button-secondaryHoverBackground);
                 }
-
+                .sortable-header {
+                    cursor: pointer;
+                    user-select: none;
+                }
+                .sort-button {
+                    margin-left: 6px;
+                    padding: 0 4px;
+                    border: 1px solid var(--vscode-button-secondaryBorder);
+                    background: var(--vscode-button-secondaryBackground);
+                    color: var(--vscode-button-secondaryForeground);
+                    border-radius: 2px;
+                    font-size: 10px;
+                    line-height: 1.2;
+                    vertical-align: middle;
+                }
+                .sort-button[data-active="true"] {
+                    border-color: var(--vscode-focusBorder);
+                }
             </style>
         </head>
         <body>
@@ -178,9 +195,15 @@ export class WebviewRenderer {
                 <thead id="regionsHead">
                     <tr>
                         <td></td>
-                        <td>Name</td>
-                        <td>Address</td>
-                        <td>Size</td>
+                        <td class="sortable-header" data-sort-key="name" title="Sort symbols by name">
+                            Name <button class="sort-button" data-sort-key="name" data-active="false" aria-label="Sort by name">⇅</button>
+                        </td>
+                        <td class="sortable-header" data-sort-key="address" title="Sort symbols by address">
+                            Address <button class="sort-button" data-sort-key="address" data-active="false" aria-label="Sort by address">⇅</button>
+                        </td>
+                        <td class="sortable-header" data-sort-key="size" title="Sort symbols by size">
+                            Size <button class="sort-button" data-sort-key="size" data-active="false" aria-label="Sort by size">⇅</button>
+                        </td>
                         <td>Used</td>
                         <td>Free</td>
                     </tr>
@@ -203,27 +226,65 @@ export class WebviewRenderer {
                 function resetTableRegions() {
                     document.getElementById('regionsBody').innerHTML = '';
                 }
+
+                function cloneRegions(regions) {
+                    return regions.map(region => ({
+                        ...region,
+                        sections: region.sections.map(section => ({
+                            ...section,
+                            symbols: [...section.symbols]
+                        }))
+                    }));
+                }
+
+                function compareSymbols(a, b, key, direction) {
+                    let diff = 0;
+                    if (key === 'name') {
+                        diff = a.name.localeCompare(b.name);
+                    } else if (key === 'address') {
+                        diff = a.startAddress - b.startAddress;
+                    } else if (key === 'size') {
+                        diff = a.size - b.size;
+                    }
+                    return direction === 'asc' ? diff : -diff;
+                }
+
+                function sortSymbolsOnly(regions, sortState) {
+                    const sortedRegions = cloneRegions(regions);
+                    if (!sortState.key) {
+                        return sortedRegions;
+                    }
+                    sortedRegions.forEach(region => {
+                        region.sections.forEach(section => {
+                            section.symbols.sort((a, b) => compareSymbols(a, b, sortState.key, sortState.direction));
+                        });
+                    });
+                    return sortedRegions;
+                }
                     
-                function fillTableRegions(regions) {
+                function fillTableRegions(regions, sortState, expandedState) {
                     const tableBody = document.getElementById('regionsBody');
                     tableBody.innerHTML = '';
 
                     let id = 0;
 
-                    regions.forEach(region => {
+                    const displayRegions = sortSymbolsOnly(regions, sortState);
+
+                    displayRegions.forEach(region => {
                         id++;
-                        const regionId = id;
+                        const regionKey = 'region:' + region.name;
                         const percent = region.used / region.size * 100;
+                        const isRegionExpanded = expandedState.regions.has(regionKey);
 
                         const tableTr = document.createElement('tr');
                         tableTr.className = 'toggleTr level-1';
                         tableTr.setAttribute('data-level', '1');
-                        tableTr.setAttribute('data-id', regionId);
+                        tableTr.setAttribute('data-id', regionKey);
                         
                         const tableTd1 = document.createElement('td');
                         const plus = document.createElement('span');
                         plus.className = 'toggle';
-                        plus.textContent = '+';
+                        plus.textContent = isRegionExpanded ? '−' : '+';
                         tableTd1.appendChild(plus);
                         
                         const bar = document.createElement('div');
@@ -280,18 +341,19 @@ export class WebviewRenderer {
 
                         region.sections.forEach(section => {
                             id++;
-                            const sectionId = id;
+                            const sectionKey = 'section:' + region.name + '::' + section.name;
+                            const isSectionExpanded = expandedState.sections.has(sectionKey);
                             const sectionTr = document.createElement('tr');
                             sectionTr.className = 'toggleTr level-2';
                             sectionTr.setAttribute('data-level', '2');
-                            sectionTr.setAttribute('data-id', sectionId);
-                            sectionTr.setAttribute('data-parent', regionId);
-                            sectionTr.style.display = 'none';
+                            sectionTr.setAttribute('data-id', sectionKey);
+                            sectionTr.setAttribute('data-parent', regionKey);
+                            sectionTr.style.display = isRegionExpanded ? '' : 'none';
 
                             const sectionTd1 = document.createElement('td');
                             const plus = document.createElement('span');
                             plus.className = 'toggle';
-                            plus.textContent = '+';
+                            plus.textContent = isSectionExpanded ? '−' : '+';
                             sectionTd1.appendChild(plus);
 
                             const sectionTd2 = document.createElement('td');
@@ -328,12 +390,13 @@ export class WebviewRenderer {
 
                             section.symbols.forEach(symbol => {
                                 id++;
+                                const symbolKey = 'symbol:' + region.name + '::' + section.name + '::' + symbol.name + '::' + symbol.startAddress;
                                 const pointTr = document.createElement('tr');
                                 pointTr.className = 'toggleTr level-3';
                                 pointTr.setAttribute('data-level', '3');
-                                pointTr.setAttribute('data-id', id);
-                                pointTr.setAttribute('data-parent', sectionId);
-                                pointTr.style.display = 'none';
+                                pointTr.setAttribute('data-id', symbolKey);
+                                pointTr.setAttribute('data-parent', sectionKey);
+                                pointTr.style.display = isRegionExpanded && isSectionExpanded ? '' : 'none';
                                 
                                 const pointTd1 = document.createElement('td');
                                 const pointTd2 = document.createElement('td');
@@ -396,6 +459,10 @@ export class WebviewRenderer {
                     });
                 });
 
+                let lastRegions = [];
+                let sortState = { key: null, direction: 'asc' };
+                const expandedState = { regions: new Set(), sections: new Set() };
+
                 document.getElementById('regionsTable').addEventListener('click', (e) => {
                     const toggleSpan = e.target.closest('.toggle');
                     if (toggleSpan) {
@@ -403,13 +470,13 @@ export class WebviewRenderer {
                         const level = parseInt(tr.getAttribute('data-level'), 10);
                         const parentId = tr.getAttribute('data-id');
 
-                        const childRows = document.querySelectorAll(\`tr[data-parent="\${parentId}"]\`);
+                        const childRows = document.querySelectorAll('tr[data-parent="' + parentId + '"]');
                         childRows.forEach(child => {
                             child.style.display = child.style.display === 'none' ? '' : 'none';
                             const childId = child.getAttribute('data-id');
                             const childLevel = parseInt(child.getAttribute('data-level'), 10);
                             if (child.style.display === 'none' && childLevel === 2) {
-                                const grandChildRows = document.querySelectorAll(\`tr[data-parent="\${childId}"]\`);
+                                const grandChildRows = document.querySelectorAll('tr[data-parent="' + childId + '"]');
                                 grandChildRows.forEach(grandChild => {
                                     if (grandChild.style.display !== 'none') {
                                         grandChild.style.display = 'none';
@@ -418,7 +485,24 @@ export class WebviewRenderer {
                             }
                         });
 
-                        toggleSpan.textContent = toggleSpan.textContent === '+' ? '−' : '+';
+                        const isExpanded = toggleSpan.textContent === '+';
+                        toggleSpan.textContent = isExpanded ? '−' : '+';
+                        if (level === 1) {
+                            if (isExpanded) {
+                                expandedState.regions.add(parentId);
+                            } else {
+                                expandedState.regions.delete(parentId);
+                                const sectionRows = document.querySelectorAll('tr[data-parent="' + parentId + '"][data-level="2"]');
+                                sectionRows.forEach(row => expandedState.sections.delete(row.getAttribute('data-id')));
+                            }
+                        }
+                        if (level === 2) {
+                            if (isExpanded) {
+                                expandedState.sections.add(parentId);
+                            } else {
+                                expandedState.sections.delete(parentId);
+                            }
+                        }
                     }
 
                     const sourceLink = e.target.closest('.source-link');
@@ -432,13 +516,45 @@ export class WebviewRenderer {
                     }
                 });
 
+                function updateSortIndicators() {
+                    document.querySelectorAll('.sort-button').forEach(button => {
+                        const key = button.dataset.sortKey;
+                        const isActive = sortState.key === key;
+                        button.dataset.active = isActive ? 'true' : 'false';
+                        if (!isActive) {
+                            button.textContent = '⇅';
+                            return;
+                        }
+                        button.textContent = sortState.direction === 'asc' ? '▲' : '▼';
+                    });
+                }
+
+                document.getElementById('regionsHead').addEventListener('click', (event) => {
+                    const header = event.target.closest('.sortable-header');
+                    if (!header) {return;}
+                    const key = header.dataset.sortKey;
+                    if (!key) {return;}
+                    if (sortState.key === key) {
+                        sortState.direction = sortState.direction === 'asc' ? 'desc' : 'asc';
+                    } else {
+                        sortState = { key, direction: 'asc' };
+                    }
+                    updateSortIndicators();
+                    if (lastRegions.length > 0) {
+                        resetTableRegions();
+                        fillTableRegions(lastRegions, sortState, expandedState);
+                    }
+                });
+
                 window.addEventListener('message', event => {
                     const message = event.data;
 
                     switch (message.command) {
                         case 'showMapData':
+                            lastRegions = message.data ?? [];
                             resetTableRegions();
-                            fillTableRegions(message.data);
+                            fillTableRegions(lastRegions, sortState, expandedState);
+                            updateSortIndicators();
                             if (message.currentBuildFolderRelativePath) {
                                 const folderDiv = document.getElementById('buildFolderPath');
                                 folderDiv.textContent = message.currentBuildFolderRelativePath;

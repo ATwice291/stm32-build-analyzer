@@ -31,6 +31,14 @@
       {
         "command": "stm32BuildAnalyzerEnhanced.refresh",
         "title": "STM32 Build Analyzer Refresh Paths"
+      },
+      {
+        "command": "stm32BuildAnalyzerEnhanced.refreshPaths",
+        "title": "STM32 Build Analyzer Change Build Folder"
+      },
+      {
+        "command": "stm32BuildAnalyzerEnhanced.addManualPair",
+        "title": "STM32 Build Analyzer Add Manual Build Pair"
       }
     ],
     "configuration": {
@@ -55,6 +63,37 @@
           "type": "boolean",
           "default": false,
           "description": "Enable verbose logging for debugging purposes."
+        },
+        "stm32BuildAnalyzerEnhanced.manualBuildPairs": {
+          "type": "array",
+          "default": [],
+          "description": "Optional list of manual map/elf pairs to use when file names differ or outputs live outside standard build folders.",
+          "items": {
+            "type": "object",
+            "required": [
+              "folder",
+              "map",
+              "elf"
+            ],
+            "properties": {
+              "label": {
+                "type": "string",
+                "description": "Display label for the manual pair."
+              },
+              "folder": {
+                "type": "string",
+                "description": "Build folder path (absolute or workspace-relative)."
+              },
+              "map": {
+                "type": "string",
+                "description": "Map file path (absolute or relative to the build folder)."
+              },
+              "elf": {
+                "type": "string",
+                "description": "ELF file path (absolute or relative to the build folder)."
+              }
+            }
+          }
         }
       }
     },
