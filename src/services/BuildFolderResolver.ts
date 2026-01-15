@@ -50,11 +50,20 @@ export class BuildFolderResolver {
       }
     }
 
-    if (customMap && customElf && await this.exists(customMap) && await this.exists(customElf)) {
+    const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    const resolvedCustomMap = customMap ? this.resolveCustomPath(customMap, workspaceRoot) : undefined;
+    const resolvedCustomElf = customElf ? this.resolveCustomPath(customElf, workspaceRoot) : undefined;
+
+    if (
+      resolvedCustomMap
+      && resolvedCustomElf
+      && await this.exists(resolvedCustomMap)
+      && await this.exists(resolvedCustomElf)
+    ) {
       if (this.debug) {console.log('[STM32] Using custom paths from settings.');}
       return {
-        map: customMap,
-        elf: customElf,
+        map: resolvedCustomMap,
+        elf: resolvedCustomElf,
         toolchainPath: await this.getToolchainPath(),
       };
     }
@@ -160,6 +169,7 @@ export class BuildFolderResolver {
     const found = new Set<string>();
     const common = ['build', 'Build', 'Release', 'Debug', 'out', 'output']
       .map(p => path.join(root, p));
+    const ignored = new Set(['node_modules', '.git', '.vscode', 'dist', 'out']);
 
     const walk = (dir: string) => {
       try {
@@ -167,7 +177,9 @@ export class BuildFolderResolver {
         for (const d of fs.readdirSync(dir, { withFileTypes: true })) {
           const full = path.join(dir, d.name);
           if (d.isDirectory()) {
-            walk(full);
+            if (!ignored.has(d.name)) {
+              walk(full);
+            }
           } else if (d.name.endsWith('.map')) {
             hasMap = true;
           } else if (d.name.endsWith('.elf')) {
@@ -265,6 +277,16 @@ export class BuildFolderResolver {
     }
 
     return resolved;
+  }
+
+  private resolveCustomPath(value: string, root?: string): string | undefined {
+    if (path.isAbsolute(value)) {
+      return value;
+    }
+    if (!root) {
+      return undefined;
+    }
+    return path.join(root, value);
   }
 
   private buildSelections(manualPairs: ResolvedBuildPair[], folders: string[]): BuildSelection[] {

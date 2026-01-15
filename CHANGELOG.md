@@ -9,11 +9,18 @@
 
 ### Changed
 - Auto-detection and toolchainPath behavior documented in README.
+- Resolve custom map/elf paths relative to the workspace root when configured in settings.
+- Skip common heavyweight folders during build output scanning.
+- Debounce map/elf file watcher refreshes to avoid excessive parsing.
 
 ### Fixed
 - Not working command palette entries.
 - Incorrect configuration namespace usage when resolving map/elf paths.
 - Webview template literal escaping issues affecting row selection toggles.
+- Allow non-alphanumeric memory region names in map parsing.
+- Improve objdump/nm error handling and buffer limits for large outputs.
+- Handle demangled symbol names with spaces during nm parsing.
+- Skip catch-all/default summary regions when parsing map files.
 
 ## [1.1.2] – 2025‑06‑20
 

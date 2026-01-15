@@ -32,7 +32,7 @@ export class MapElfParser {
   private parseMap(mapFile: string): Region[] {
     const lines = fs.readFileSync(mapFile, 'utf8').split('\n');
     const regs: Region[] = [];
-    const regionRx = /^\s*(\w+)\s+(0x[\da-fA-F]+)\s+(0x[\da-fA-F]+)/;
+    const regionRx = /^\s*(\S+)\s+(0x[\da-fA-F]+)\s+(0x[\da-fA-F]+)/;
     let inMem = false;
 
     for (const l of lines) {
@@ -57,10 +57,12 @@ export class MapElfParser {
 
   private parseSections(elfFile: string, regions: Region[]): void {
     const cmd = this.getTool('arm-none-eabi-objdump');
-    const out = cp.spawnSync(cmd, ['-h', elfFile]);
+    const out = cp.spawnSync(cmd, ['-h', elfFile], { maxBuffer: 8 * 1024 * 1024 });
 
-    if (out.error) {
-      if (this.debug) {console.error(`[STM32 Parser] objdump error: ${out.error.message}`);}
+    if (out.error || out.status !== 0) {
+      if (this.debug) {
+        console.error(`[STM32 Parser] objdump error: ${out.error?.message ?? 'non-zero exit code'}`);
+      }
       return;
     }
 
@@ -95,20 +97,30 @@ export class MapElfParser {
 
   private parseSymbols(elfFile: string, regions: Region[]): void {
     const cmd = this.getTool('arm-none-eabi-nm');
-    const out = cp.spawnSync(cmd, ['-C', '-S', '-n', '-l', '--defined-only', elfFile]);
+    const out = cp.spawnSync(
+      cmd,
+      ['-C', '-S', '-n', '-l', '--defined-only', elfFile],
+      { maxBuffer: 32 * 1024 * 1024 }
+    );
 
-    if (out.error) {
-      if (this.debug) {console.error(`[STM32 Parser] nm error: ${out.error.message}`);}
+    if (out.error || out.status !== 0) {
+      if (this.debug) {console.error(`[STM32 Parser] nm error: ${out.error?.message ?? 'non-zero exit code'}`);}
       return;
     }
 
     const lines = out.stdout.toString().split('\n');
-    const symRx = /^([0-9A-Fa-f]+)\s+([0-9A-Fa-f]+)?\s*\w\s+(\S+)\s*(\S*)/;
+    const symRx = /^([0-9A-Fa-f]+)\s+([0-9A-Fa-f]+)?\s*\w\s+([^\t]*)\t*(\S*)/;
     const pathRx = /(.*):(\d+)$/;
+    const unmatchedLines: string[] = [];
 
     for (const l of lines) {
       const m = symRx.exec(l);
-      if (!m) { continue; }
+      if (!m) {
+        if (this.debug) {
+          unmatchedLines.push(l);
+        }
+        continue;
+      }
 
       const addr = parseInt(m[1], 16),
         size = isNaN(parseInt(m[2] || '0', 16)) ? 0 : parseInt(m[2]!, 16),
@@ -137,6 +149,14 @@ export class MapElfParser {
           }
         }
       }
+    }
+
+    if (this.debug && unmatchedLines.length > 0) {
+      const maxUnmatched = 10;
+      console.log(`[STM32 Parser] Unmatched nm lines: ${unmatchedLines.length}`);
+      unmatchedLines.slice(0, maxUnmatched).forEach((line, i) => {
+        console.log(`  ${i + 1}: "${line}"`);
+      });
     }
   }
 
