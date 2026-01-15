@@ -272,7 +272,7 @@ export class WebviewRenderer {
 
                     displayRegions.forEach(region => {
                         id++;
-                        const regionKey = `region:${region.name}`;
+                        const regionKey = 'region:' + region.name;
                         const percent = region.used / region.size * 100;
                         const isRegionExpanded = expandedState.regions.has(regionKey);
 
@@ -341,7 +341,7 @@ export class WebviewRenderer {
 
                         region.sections.forEach(section => {
                             id++;
-                            const sectionKey = `section:${region.name}::${section.name}`;
+                            const sectionKey = 'section:' + region.name + '::' + section.name;
                             const isSectionExpanded = expandedState.sections.has(sectionKey);
                             const sectionTr = document.createElement('tr');
                             sectionTr.className = 'toggleTr level-2';
@@ -390,7 +390,7 @@ export class WebviewRenderer {
 
                             section.symbols.forEach(symbol => {
                                 id++;
-                                const symbolKey = `symbol:${region.name}::${section.name}::${symbol.name}::${symbol.startAddress}`;
+                                const symbolKey = 'symbol:' + region.name + '::' + section.name + '::' + symbol.name + '::' + symbol.startAddress;
                                 const pointTr = document.createElement('tr');
                                 pointTr.className = 'toggleTr level-3';
                                 pointTr.setAttribute('data-level', '3');
@@ -470,13 +470,13 @@ export class WebviewRenderer {
                         const level = parseInt(tr.getAttribute('data-level'), 10);
                         const parentId = tr.getAttribute('data-id');
 
-                        const childRows = document.querySelectorAll(\`tr[data-parent="\${parentId}"]\`);
+                        const childRows = document.querySelectorAll('tr[data-parent="' + parentId + '"]');
                         childRows.forEach(child => {
                             child.style.display = child.style.display === 'none' ? '' : 'none';
                             const childId = child.getAttribute('data-id');
                             const childLevel = parseInt(child.getAttribute('data-level'), 10);
                             if (child.style.display === 'none' && childLevel === 2) {
-                                const grandChildRows = document.querySelectorAll(\`tr[data-parent="\${childId}"]\`);
+                                const grandChildRows = document.querySelectorAll('tr[data-parent="' + childId + '"]');
                                 grandChildRows.forEach(grandChild => {
                                     if (grandChild.style.display !== 'none') {
                                         grandChild.style.display = 'none';
@@ -492,7 +492,7 @@ export class WebviewRenderer {
                                 expandedState.regions.add(parentId);
                             } else {
                                 expandedState.regions.delete(parentId);
-                                const sectionRows = document.querySelectorAll(\`tr[data-parent="\${parentId}"][data-level="2"]\`);
+                                const sectionRows = document.querySelectorAll('tr[data-parent="' + parentId + '"][data-level="2"]');
                                 sectionRows.forEach(row => expandedState.sections.delete(row.getAttribute('data-id')));
                             }
                         }
