@@ -1,5 +1,30 @@
 # Changelog
 
+## [1.1.3] – 2026‑01‑15
+
+### Added
+- Manual map/elf pairs (setting + command) for builds with non-matching outputs (including files with no .elf .map extension).
+- Symbol sorting controls by name/address/size within sections in the analyzer view.
+- Command palette entry to open the analyzer view directly.
+- Search box with case-sensitive toggle to filter regions/sections/symbols in the analyzer view.
+
+### Changed
+- Auto-detection and toolchainPath behavior documented in README.
+- Resolve custom map/elf paths relative to the workspace root when configured in settings.
+- Skip common heavyweight folders during build output scanning.
+- Debounce map/elf file watcher refreshes to avoid excessive parsing.
+- Build output detection now scans the full workspace (including symlinked directories) to find every folder containing both `.map` and `.elf`.
+- Quick Pick entries now display build names derived from ELF/MAP filenames with the folder shown on the detail line.
+
+### Fixed
+- Not working command palette entries.
+- Incorrect configuration namespace usage when resolving map/elf paths.
+- Webview template literal escaping issues affecting row selection toggles.
+- Allow non-alphanumeric memory region names in map parsing.
+- Improve objdump/nm error handling and buffer limits for large outputs.
+- Handle demangled symbol names with spaces during nm parsing.
+- Skip catch-all/default summary regions when parsing map files.
+
 ## [1.1.2] – 2025‑06‑20
 
 ### Added
