@@ -31,14 +31,17 @@ This fork removes that dependency, adds broader file handling, and enhances the 
 - Clickable links from symbols to source files
 - Visual panel with color-coded usage (RAM, Flash)
 - Sorting by symbol name/address/size within each section
+- Search filter for regions/sections/symbols with optional case sensitivity
 - ARM toolchain integration (`arm-none-eabi-objdump`, `nm`)
-- Compatible with any STM32 build system
+- Compatible with any build system
+- Build multiple folders auto detection
+- Option to point manualy to map and elf object (even wihout .elf .map extension)
 
 ---
 
 ## 📦 Installation
 
-### From VS Code Marketplace (Coming soon)
+### From VS Code Marketplace
 
 📥 [Marketplace link placeholder](https://marketplace.visualstudio.com/items?itemName=niwciu.stm32-build-analyzer-enhanced#)
 
@@ -67,11 +70,11 @@ This fork removes that dependency, adds broader file handling, and enhances the 
    ```bash
    vsce package
    ```
-4. This will generate a file like: `stm32-build-analyzer-enhanced-1.1.2.vsix`
+4. This will generate a file like: `stm32-build-analyzer-enhanced-1.1.3.vsix`
 
 5. Install the extension in VS Code: 
    ```bash
-   code --install-extension stm32-build-analyzer-enhanced-1.1.2.vsix
+   code --install-extension stm32-build-analyzer-enhanced-1.1.3.vsix
    ```
 
 
@@ -84,7 +87,7 @@ This fork removes that dependency, adds broader file handling, and enhances the 
   - `STM32 Build Analyzer Refresh Paths` – re-detects build output folder
   - `STM32 Build Analyzer Add Manual Build Pair` – add a manual map/elf pair via prompts
 - Analyzer view updates automatically when build output files change.
-- Click the **Name**, **Address**, or **Size** headers to sort symbols within a section (click again to toggle ascending/descending).
+- Click the button next to **Name**, **Address**, or **Size** headers to sort symbols within a section (click again to toggle ascending/descending).
 
 ---
 
@@ -95,7 +98,7 @@ The extension auto-detects `.map` + `.elf` files in common build folders. If you
 ### How auto-detection works
 
 1. If **both** `mapFilePath` and `elfFilePath` are set and point to readable files, the extension uses them directly and skips scanning.
-2. Otherwise, it scans common build folders like `build`, `Release`, `Debug`, `out`, and `output`. If none are found, it falls back to scanning the entire workspace.
+2. Otherwise, it scans the entire workspace (including symlinked directories) and collects any folder containing both `.map` and `.elf` files.
 3. If multiple candidates are found, you will be prompted to pick the build output (or a manual pair).
 
 ### Toolchain path behavior

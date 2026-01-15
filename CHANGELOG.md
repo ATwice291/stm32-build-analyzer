@@ -6,12 +6,15 @@
 - Manual map/elf pairs (setting + command) for builds with non-matching outputs (including files with no .elf .map extension).
 - Symbol sorting controls by name/address/size within sections in the analyzer view.
 - Command palette entry to open the analyzer view directly.
+- Search box with case-sensitive toggle to filter regions/sections/symbols in the analyzer view.
 
 ### Changed
 - Auto-detection and toolchainPath behavior documented in README.
 - Resolve custom map/elf paths relative to the workspace root when configured in settings.
 - Skip common heavyweight folders during build output scanning.
 - Debounce map/elf file watcher refreshes to avoid excessive parsing.
+- Build output detection now scans the full workspace (including symlinked directories) to find every folder containing both `.map` and `.elf`.
+- Quick Pick entries now display build names derived from ELF/MAP filenames with the folder shown on the detail line.
 
 ### Fixed
 - Not working command palette entries.

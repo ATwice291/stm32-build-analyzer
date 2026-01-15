@@ -146,10 +146,15 @@ export class WebviewRenderer {
                     width: 20px;
                     user-select: none;
                 }
+                .button-container {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    margin-bottom: 10px;
+                }
                 #refreshButton,
                 #refreshPathsButton {
                     padding: 5px 10px;
-                    margin-bottom: 10px;
                     cursor: pointer;
                     background-color: var(--vscode-button-secondaryBackground);
                     color: var(--vscode-button-secondaryForeground);
@@ -160,6 +165,33 @@ export class WebviewRenderer {
                 #refreshButton:hover,
                 #refreshPathsButton:hover {
                     background-color: var(--vscode-button-secondaryHoverBackground);
+                }
+                #searchInput {
+                    width: 220px;
+                    padding: 4px 6px;
+                    border-radius: 2px;
+                    border: 1px solid var(--vscode-input-border);
+                    background: var(--vscode-input-background);
+                    color: var(--vscode-input-foreground);
+                }
+                #searchInput::placeholder {
+                    color: var(--vscode-input-placeholderForeground);
+                }
+                .case-toggle {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 4px;
+                    padding: 2px 6px;
+                    border-radius: 2px;
+                    border: 1px solid var(--vscode-button-secondaryBorder);
+                    background: var(--vscode-button-secondaryBackground);
+                    color: var(--vscode-button-secondaryForeground);
+                    cursor: pointer;
+                    user-select: none;
+                    font-size: 12px;
+                }
+                .case-toggle input {
+                    margin: 0;
                 }
                 .sortable-header {
                     cursor: pointer;
@@ -185,6 +217,11 @@ export class WebviewRenderer {
             <div class="button-container">
                 <button id="refreshButton" class="button">Refresh Analyze</button>
                 <button id="refreshPathsButton" class="button">Change Build Folder</button>
+                <input id="searchInput" type="text" placeholder="Search symbols..." />
+                <label class="case-toggle" title="Case sensitive search">
+                    <input type="checkbox" id="caseSensitiveToggle" />
+                    Aa
+                </label>
             </div>
             <div class="current-build-folder-path-container">
                 <label><strong>Current Build Folder:</strong></label>
@@ -260,6 +297,67 @@ export class WebviewRenderer {
                         });
                     });
                     return sortedRegions;
+                }
+
+                function normalizeText(value, caseSensitive) {
+                    if (!value) {return '';}
+                    return caseSensitive ? value : value.toLowerCase();
+                }
+
+                function includesText(value, query, caseSensitive) {
+                    if (!query) {return true;}
+                    return normalizeText(value, caseSensitive).includes(normalizeText(query, caseSensitive));
+                }
+
+                function filterRegions(regions, filterState) {
+                    if (!filterState.query) {
+                        return {
+                            regions,
+                            expanded: { regions: new Set(), sections: new Set() },
+                            isFiltering: false
+                        };
+                    }
+
+                    const expanded = { regions: new Set(), sections: new Set() };
+                    const filtered = [];
+
+                    regions.forEach(region => {
+                        const regionKey = 'region:' + region.name;
+                        const regionMatch = includesText(region.name, filterState.query, filterState.caseSensitive);
+                        const filteredSections = [];
+
+                        region.sections.forEach(section => {
+                            const sectionKey = 'section:' + region.name + '::' + section.name;
+                            const sectionMatch = includesText(section.name, filterState.query, filterState.caseSensitive);
+                            const filteredSymbols = section.symbols.filter(symbol => {
+                                const symbolMatch = includesText(symbol.name, filterState.query, filterState.caseSensitive);
+                                const pathMatch = includesText(symbol.path, filterState.query, filterState.caseSensitive);
+                                return symbolMatch || pathMatch;
+                            });
+
+                            if (sectionMatch || filteredSymbols.length > 0) {
+                                if (filteredSymbols.length > 0) {
+                                    expanded.sections.add(sectionKey);
+                                }
+                                filteredSections.push({
+                                    ...section,
+                                    symbols: filteredSymbols.length > 0 || sectionMatch
+                                        ? filteredSymbols
+                                        : []
+                                });
+                            }
+                        });
+
+                        if (regionMatch || filteredSections.length > 0) {
+                            expanded.regions.add(regionKey);
+                            filtered.push({
+                                ...region,
+                                sections: filteredSections
+                            });
+                        }
+                    });
+
+                    return { regions: filtered, expanded, isFiltering: true };
                 }
                     
                 function fillTableRegions(regions, sortState, expandedState) {
@@ -457,11 +555,22 @@ export class WebviewRenderer {
                     document.getElementById('refreshPathsButton').addEventListener('click', () => {
                         vscode.postMessage({ command: 'refreshPaths' });
                     });
+
+                    document.getElementById('searchInput').addEventListener('input', (event) => {
+                        filterState.query = event.target.value ?? '';
+                        renderRegions();
+                    });
+
+                    document.getElementById('caseSensitiveToggle').addEventListener('change', (event) => {
+                        filterState.caseSensitive = event.target.checked;
+                        renderRegions();
+                    });
                 });
 
                 let lastRegions = [];
                 let sortState = { key: null, direction: 'asc' };
                 const expandedState = { regions: new Set(), sections: new Set() };
+                const filterState = { query: '', caseSensitive: false };
 
                 document.getElementById('regionsTable').addEventListener('click', (e) => {
                     const toggleSpan = e.target.closest('.toggle');
@@ -516,6 +625,17 @@ export class WebviewRenderer {
                     }
                 });
 
+                function renderRegions() {
+                    const { regions, expanded, isFiltering } = filterRegions(lastRegions, filterState);
+                    const expandedToUse = isFiltering
+                        ? expanded
+                        : expandedState;
+
+                    resetTableRegions();
+                    fillTableRegions(regions, sortState, expandedToUse);
+                    updateSortIndicators();
+                }
+
                 function updateSortIndicators() {
                     document.querySelectorAll('.sort-button').forEach(button => {
                         const key = button.dataset.sortKey;
@@ -541,8 +661,7 @@ export class WebviewRenderer {
                     }
                     updateSortIndicators();
                     if (lastRegions.length > 0) {
-                        resetTableRegions();
-                        fillTableRegions(lastRegions, sortState, expandedState);
+                        renderRegions();
                     }
                 });
 
@@ -552,9 +671,7 @@ export class WebviewRenderer {
                     switch (message.command) {
                         case 'showMapData':
                             lastRegions = message.data ?? [];
-                            resetTableRegions();
-                            fillTableRegions(lastRegions, sortState, expandedState);
-                            updateSortIndicators();
+                            renderRegions();
                             if (message.currentBuildFolderRelativePath) {
                                 const folderDiv = document.getElementById('buildFolderPath');
                                 folderDiv.textContent = message.currentBuildFolderRelativePath;
