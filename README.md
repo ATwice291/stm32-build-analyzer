@@ -85,6 +85,29 @@ This fork removes that dependency, adds broader file handling, and enhances the 
 
 ---
 
+## ⚙️ Configuration
+
+The extension auto-detects `.map` + `.elf` files in common build folders. If your build outputs use different names or the ELF has no extension, configure a manual pair so the analyzer can still select the correct files.
+
+### Manual map/elf pairs
+
+Add one or more entries in **Settings → STM32 Build Analyzer (Enhanced) → Manual Build Pairs**:
+
+```json
+"stm32BuildAnalyzerEnhanced.manualBuildPairs": [
+  {
+    "label": "Release build",
+    "folder": "build/Release",
+    "map": "firmware.map",
+    "elf": "firmware.out"
+  }
+]
+```
+
+Paths can be absolute or relative. `map` and `elf` paths may be relative to the `folder` when provided.
+
+---
+
 ## 📜 Changelog
 
 See [CHANGELOG.md](CHANGELOG.md) for full version history.

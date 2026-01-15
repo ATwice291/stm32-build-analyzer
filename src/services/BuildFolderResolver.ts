@@ -8,6 +8,24 @@ export interface BuildPaths {
   toolchainPath?: string;
 }
 
+interface ManualBuildPair {
+  folder: string;
+  map: string;
+  elf: string;
+  label?: string;
+}
+
+interface ResolvedBuildPair {
+  folder: string;
+  map: string;
+  elf: string;
+  label: string;
+}
+
+type BuildSelection =
+  | { kind: 'manual'; pair: ResolvedBuildPair }
+  | { kind: 'auto'; folder: string };
+
 export class BuildFolderResolver {
   private readonly debug: boolean;
 
@@ -18,14 +36,18 @@ export class BuildFolderResolver {
   }
 
   public async resolve(): Promise<BuildPaths> {
-    const cfg = vscode.workspace.getConfiguration('stm32BuildAnalyzer');
+    const cfg = vscode.workspace.getConfiguration('stm32BuildAnalyzerEnhanced');
     const customMap = cfg.get<string>('mapFilePath');
     const customElf = cfg.get<string>('elfFilePath');
+    const manualPairs = cfg.get<ManualBuildPair[]>('manualBuildPairs') ?? [];
 
     if (this.debug) {
       console.log('[STM32] Resolving build paths...');
       console.log(`[STM32] Custom map: ${customMap}`);
       console.log(`[STM32] Custom elf: ${customElf}`);
+      if (manualPairs.length > 0) {
+        console.log(`[STM32] Manual pairs configured: ${manualPairs.length}`);
+      }
     }
 
     if (customMap && customElf && await this.exists(customMap) && await this.exists(customElf)) {
@@ -46,34 +68,53 @@ export class BuildFolderResolver {
 
     if (this.debug) {console.log(`[STM32] Scanning workspace folder: ${root}`);}
 
+    const resolvedManualPairs = await this.resolveManualPairs(root, manualPairs);
     const folders = await this.findBuildFolders(root);
-    if (folders.length === 0) {
+    const selections = this.buildSelections(resolvedManualPairs, folders);
+    if (selections.length === 0) {
       throw new Error('No build folders containing both .map and .elf found');
     }
 
-    let target = folders[0];
-    if (folders.length > 1) {
+    let selection = selections[0];
+    if (selections.length > 1) {
       if (this.debug) {
-        console.log(`[STM32] Multiple build folders found:`);
-        folders.forEach(f => console.log(` → ${f}`));
+        console.log(`[STM32] Multiple build targets found:`);
+        selections.forEach(s => {
+          if (s.kind === 'manual') {
+            console.log(` → Manual: ${s.pair.folder}`);
+          } else {
+            console.log(` → Auto: ${s.folder}`);
+          }
+        });
       }
 
       const pick = await vscode.window.showQuickPick(
-        folders.map(f => ({ label: path.basename(f), folder: f })),
-        { placeHolder: 'Select build folder with .map & .elf' }
+        selections.map(s => this.toQuickPick(s)),
+        { placeHolder: 'Select build output or manual map/elf pair' }
       );
       if (!pick) {
         throw new Error('Build folder selection cancelled');
       }
-      target = pick.folder;
+      selection = pick.selection;
     }
 
-    if (this.debug) {console.log(`[STM32] Selected folder: ${target}`);}
+    if (selection.kind === 'manual') {
+      if (this.debug) {
+        console.log(`[STM32] Selected manual pair: ${selection.pair.map} + ${selection.pair.elf}`);
+      }
+      return {
+        map: selection.pair.map,
+        elf: selection.pair.elf,
+        toolchainPath: await this.getToolchainPath(),
+      };
+    }
 
-    const mapFile = await this.findFile(target, '.map');
-    const elfFile = await this.findFile(target, '.elf');
+    if (this.debug) {console.log(`[STM32] Selected folder: ${selection.folder}`);}
+
+    const mapFile = await this.findFile(selection.folder, '.map');
+    const elfFile = await this.findFile(selection.folder, '.elf');
     if (!mapFile || !elfFile) {
-      throw new Error(`Missing .map or .elf in ${target}`);
+      throw new Error(`Missing .map or .elf in ${selection.folder}`);
     }
 
     return {
@@ -184,5 +225,68 @@ export class BuildFolderResolver {
       if (this.debug) {console.warn(`[STM32] Could not use file: ${p}`);}
       return undefined;
     }
+  }
+
+  private async resolveManualPairs(root: string, pairs: ManualBuildPair[]): Promise<ResolvedBuildPair[]> {
+    const resolved: ResolvedBuildPair[] = [];
+
+    for (const pair of pairs) {
+      if (!pair.folder || !pair.map || !pair.elf) {
+        if (this.debug) {console.warn('[STM32] Skipping invalid manual pair entry.');}
+        continue;
+      }
+
+      const folderPath = path.isAbsolute(pair.folder)
+        ? pair.folder
+        : path.join(root, pair.folder);
+      const mapPath = path.isAbsolute(pair.map)
+        ? pair.map
+        : path.join(folderPath, pair.map);
+      const elfPath = path.isAbsolute(pair.elf)
+        ? pair.elf
+        : path.join(folderPath, pair.elf);
+
+      const mapOk = await this.exists(mapPath);
+      const elfOk = await this.exists(elfPath);
+
+      if (!mapOk || !elfOk) {
+        if (this.debug) {
+          console.warn(`[STM32] Manual pair not accessible: ${mapPath} ${elfPath}`);
+        }
+        continue;
+      }
+
+      resolved.push({
+        folder: folderPath,
+        map: mapPath,
+        elf: elfPath,
+        label: pair.label ?? path.basename(folderPath),
+      });
+    }
+
+    return resolved;
+  }
+
+  private buildSelections(manualPairs: ResolvedBuildPair[], folders: string[]): BuildSelection[] {
+    const selections: BuildSelection[] = [];
+    manualPairs.forEach(pair => selections.push({ kind: 'manual', pair }));
+    folders.forEach(folder => selections.push({ kind: 'auto', folder }));
+    return selections;
+  }
+
+  private toQuickPick(selection: BuildSelection): vscode.QuickPickItem & { selection: BuildSelection } {
+    if (selection.kind === 'manual') {
+      return {
+        label: `Manual: ${selection.pair.label}`,
+        detail: `${selection.pair.map} | ${selection.pair.elf}`,
+        selection,
+      };
+    }
+
+    return {
+      label: path.basename(selection.folder),
+      detail: selection.folder,
+      selection,
+    };
   }
 }
