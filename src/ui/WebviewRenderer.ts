@@ -161,33 +161,12 @@ export class WebviewRenderer {
                 #refreshPathsButton:hover {
                     background-color: var(--vscode-button-secondaryHoverBackground);
                 }
-                #sortSelect {
-                    padding: 5px 10px;
-                    margin-left: 10px;
-                    margin-bottom: 10px;
-                    background-color: var(--vscode-button-secondaryBackground);
-                    color: var(--vscode-button-secondaryForeground);
-                    border: 1px solid var(--vscode-button-secondaryBorder);
-                    border-radius: 2px;
-                }
-                .toolbar {
-                    display: flex;
-                    flex-wrap: wrap;
-                    align-items: center;
-                    gap: 6px;
-                }
-
             </style>
         </head>
         <body>
-            <div class="button-container toolbar">
+            <div class="button-container">
                 <button id="refreshButton" class="button">Refresh Analyze</button>
                 <button id="refreshPathsButton" class="button">Change Build Folder</button>
-                <label for="sortSelect"><strong>Sort:</strong></label>
-                <select id="sortSelect">
-                    <option value="default">Default</option>
-                    <option value="size-desc">Size (desc)</option>
-                </select>
             </div>
             <div class="current-build-folder-path-container">
                 <label><strong>Current Build Folder:</strong></label>
@@ -198,9 +177,9 @@ export class WebviewRenderer {
                 <thead id="regionsHead">
                     <tr>
                         <td></td>
-                        <td>Name</td>
-                        <td>Address</td>
-                        <td>Size</td>
+                        <td class="sortable-header" data-sort-key="name">Name</td>
+                        <td class="sortable-header" data-sort-key="address">Address</td>
+                        <td class="sortable-header" data-sort-key="size">Size</td>
                         <td>Used</td>
                         <td>Free</td>
                     </tr>
@@ -234,27 +213,38 @@ export class WebviewRenderer {
                     }));
                 }
 
-                function sortRegions(regions, mode) {
-                    const sortedRegions = cloneRegions(regions);
-                    if (mode === 'size-desc') {
-                        sortedRegions.sort((a, b) => (b.used ?? b.size) - (a.used ?? a.size));
-                        sortedRegions.forEach(region => {
-                            region.sections.sort((a, b) => b.size - a.size);
-                            region.sections.forEach(section => {
-                                section.symbols.sort((a, b) => b.size - a.size);
-                            });
-                        });
+                function compareSymbols(a, b, key, direction) {
+                    let diff = 0;
+                    if (key === 'name') {
+                        diff = a.name.localeCompare(b.name);
+                    } else if (key === 'address') {
+                        diff = a.startAddress - b.startAddress;
+                    } else if (key === 'size') {
+                        diff = a.size - b.size;
                     }
+                    return direction === 'asc' ? diff : -diff;
+                }
+
+                function sortSymbolsOnly(regions, sortState) {
+                    const sortedRegions = cloneRegions(regions);
+                    if (!sortState.key) {
+                        return sortedRegions;
+                    }
+                    sortedRegions.forEach(region => {
+                        region.sections.forEach(section => {
+                            section.symbols.sort((a, b) => compareSymbols(a, b, sortState.key, sortState.direction));
+                        });
+                    });
                     return sortedRegions;
                 }
                     
-                function fillTableRegions(regions, sortMode) {
+                function fillTableRegions(regions, sortState) {
                     const tableBody = document.getElementById('regionsBody');
                     tableBody.innerHTML = '';
 
                     let id = 0;
 
-                    const displayRegions = sortRegions(regions, sortMode);
+                    const displayRegions = sortSymbolsOnly(regions, sortState);
 
                     displayRegions.forEach(region => {
                         id++;
@@ -479,13 +469,21 @@ export class WebviewRenderer {
                 });
 
                 let lastRegions = [];
-                let currentSort = 'default';
+                let sortState = { key: null, direction: 'asc' };
 
-                document.getElementById('sortSelect').addEventListener('change', (event) => {
-                    currentSort = event.target.value;
+                document.getElementById('regionsHead').addEventListener('click', (event) => {
+                    const header = event.target.closest('.sortable-header');
+                    if (!header) {return;}
+                    const key = header.dataset.sortKey;
+                    if (!key) {return;}
+                    if (sortState.key === key) {
+                        sortState.direction = sortState.direction === 'asc' ? 'desc' : 'asc';
+                    } else {
+                        sortState = { key, direction: 'asc' };
+                    }
                     if (lastRegions.length > 0) {
                         resetTableRegions();
-                        fillTableRegions(lastRegions, currentSort);
+                        fillTableRegions(lastRegions, sortState);
                     }
                 });
 
@@ -496,7 +494,7 @@ export class WebviewRenderer {
                         case 'showMapData':
                             lastRegions = message.data ?? [];
                             resetTableRegions();
-                            fillTableRegions(lastRegions, currentSort);
+                            fillTableRegions(lastRegions, sortState);
                             if (message.currentBuildFolderRelativePath) {
                                 const folderDiv = document.getElementById('buildFolderPath');
                                 folderDiv.textContent = message.currentBuildFolderRelativePath;
