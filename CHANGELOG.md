@@ -1,13 +1,19 @@
 # Changelog
 
-## [Unreleased]
+## [1.1.3] – 2026‑01‑15
 
 ### Added
-- Manual map/elf pairs (settings and command) for builds with non-matching outputs.
-- Symbol sorting by name/address/size within sections in the analyzer view.
+- Manual map/elf pairs (setting + command) for builds with non-matching outputs (including files with no .elf .map extension).
+- Symbol sorting controls by name/address/size within sections in the analyzer view.
+- Command palette entry to open the analyzer view directly.
 
 ### Changed
 - Auto-detection and toolchainPath behavior documented in README.
+
+### Fixed
+- Not working command palette entries.
+- Incorrect configuration namespace usage when resolving map/elf paths.
+- Webview template literal escaping issues affecting row selection toggles.
 
 ## [1.1.2] – 2025‑06‑20
 
