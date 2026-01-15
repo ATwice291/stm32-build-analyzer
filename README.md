@@ -82,6 +82,7 @@ This fork removes that dependency, adds broader file handling, and enhances the 
   - `STM32 Build Analyzer` – opens the main view
   - `STM32 Build Analyzer Refresh Paths` – re-detects build output folder
 - Analyzer view updates automatically when build output files change.
+- Use the **Sort** dropdown in the panel to order regions/sections/symbols by size.
 
 ---
 

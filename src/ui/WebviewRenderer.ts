@@ -161,13 +161,33 @@ export class WebviewRenderer {
                 #refreshPathsButton:hover {
                     background-color: var(--vscode-button-secondaryHoverBackground);
                 }
+                #sortSelect {
+                    padding: 5px 10px;
+                    margin-left: 10px;
+                    margin-bottom: 10px;
+                    background-color: var(--vscode-button-secondaryBackground);
+                    color: var(--vscode-button-secondaryForeground);
+                    border: 1px solid var(--vscode-button-secondaryBorder);
+                    border-radius: 2px;
+                }
+                .toolbar {
+                    display: flex;
+                    flex-wrap: wrap;
+                    align-items: center;
+                    gap: 6px;
+                }
 
             </style>
         </head>
         <body>
-            <div class="button-container">
+            <div class="button-container toolbar">
                 <button id="refreshButton" class="button">Refresh Analyze</button>
                 <button id="refreshPathsButton" class="button">Change Build Folder</button>
+                <label for="sortSelect"><strong>Sort:</strong></label>
+                <select id="sortSelect">
+                    <option value="default">Default</option>
+                    <option value="size-desc">Size (desc)</option>
+                </select>
             </div>
             <div class="current-build-folder-path-container">
                 <label><strong>Current Build Folder:</strong></label>
@@ -203,14 +223,40 @@ export class WebviewRenderer {
                 function resetTableRegions() {
                     document.getElementById('regionsBody').innerHTML = '';
                 }
+
+                function cloneRegions(regions) {
+                    return regions.map(region => ({
+                        ...region,
+                        sections: region.sections.map(section => ({
+                            ...section,
+                            symbols: [...section.symbols]
+                        }))
+                    }));
+                }
+
+                function sortRegions(regions, mode) {
+                    const sortedRegions = cloneRegions(regions);
+                    if (mode === 'size-desc') {
+                        sortedRegions.sort((a, b) => (b.used ?? b.size) - (a.used ?? a.size));
+                        sortedRegions.forEach(region => {
+                            region.sections.sort((a, b) => b.size - a.size);
+                            region.sections.forEach(section => {
+                                section.symbols.sort((a, b) => b.size - a.size);
+                            });
+                        });
+                    }
+                    return sortedRegions;
+                }
                     
-                function fillTableRegions(regions) {
+                function fillTableRegions(regions, sortMode) {
                     const tableBody = document.getElementById('regionsBody');
                     tableBody.innerHTML = '';
 
                     let id = 0;
 
-                    regions.forEach(region => {
+                    const displayRegions = sortRegions(regions, sortMode);
+
+                    displayRegions.forEach(region => {
                         id++;
                         const regionId = id;
                         const percent = region.used / region.size * 100;
@@ -432,13 +478,25 @@ export class WebviewRenderer {
                     }
                 });
 
+                let lastRegions = [];
+                let currentSort = 'default';
+
+                document.getElementById('sortSelect').addEventListener('change', (event) => {
+                    currentSort = event.target.value;
+                    if (lastRegions.length > 0) {
+                        resetTableRegions();
+                        fillTableRegions(lastRegions, currentSort);
+                    }
+                });
+
                 window.addEventListener('message', event => {
                     const message = event.data;
 
                     switch (message.command) {
                         case 'showMapData':
+                            lastRegions = message.data ?? [];
                             resetTableRegions();
-                            fillTableRegions(message.data);
+                            fillTableRegions(lastRegions, currentSort);
                             if (message.currentBuildFolderRelativePath) {
                                 const folderDiv = document.getElementById('buildFolderPath');
                                 folderDiv.textContent = message.currentBuildFolderRelativePath;
