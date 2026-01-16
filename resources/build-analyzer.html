@@ -87,9 +87,14 @@
       color: var(--vscode-descriptionForeground);
     }
 
+    body.classic-view {
+      padding: 6px 8px;
+      font-family: var(--vscode-editor-font-family);
+    }
+
     body.classic-view .toolbar {
-      gap: 6px;
-      margin-bottom: 8px;
+      gap: 8px;
+      margin-bottom: 10px;
     }
 
     body.classic-view .toolbar button {
@@ -102,7 +107,7 @@
 
     body.classic-view .toolbar input[type="text"],
     body.classic-view .toolbar select {
-      min-width: 200px;
+      min-width: 220px;
       padding: 4px 6px;
       border-radius: 2px;
     }
@@ -208,6 +213,12 @@
       width: 100%;
       text-align: left;
       border-collapse: collapse;
+    }
+
+    body.classic-view table.gray {
+      width: auto;
+      max-width: 100%;
+      display: inline-table;
     }
 
     table.gray td,
