@@ -880,6 +880,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const refreshPathsButton = document.getElementById('refreshPathsButton');
     const viewSelect = document.getElementById('viewSelect') as HTMLSelectElement | null;
     const filterToggleButton = document.getElementById('filterToggleButton') as HTMLButtonElement | null;
+    const filterButtons = document.querySelectorAll<HTMLButtonElement>('.filter-button');
     const filterNameInput = document.getElementById('filterName') as HTMLInputElement | null;
     const filterAddressInput = document.getElementById('filterAddress') as HTMLInputElement | null;
     const filterSizeInput = document.getElementById('filterSize') as HTMLInputElement | null;
@@ -906,6 +907,28 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         filterBarOpen = !filterBarOpen;
         updateFilterBarVisibility();
+    });
+
+    filterButtons.forEach(button => {
+        button.addEventListener('click', (event: MouseEvent) => {
+            event.stopPropagation();
+            const filterTarget = button.dataset.filter;
+            if (currentView !== 'table') {
+                if (viewSelect) {
+                    viewSelect.value = 'table';
+                }
+                setView('table');
+            }
+            filterBarOpen = true;
+            updateFilterBarVisibility();
+            if (filterTarget === 'name') {
+                filterNameInput?.focus();
+            } else if (filterTarget === 'address') {
+                filterAddressInput?.focus();
+            } else if (filterTarget === 'size') {
+                filterSizeInput?.focus();
+            }
+        });
     });
 
     const onFilterChange = () => {

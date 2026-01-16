@@ -267,6 +267,21 @@
       font-weight: 600;
     }
 
+    table.modern .filter-button {
+      margin-left: 4px;
+      border: 1px solid var(--vscode-button-secondaryBorder, var(--vscode-button-border));
+      background: var(--vscode-button-secondaryBackground);
+      color: var(--vscode-button-secondaryForeground);
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-size: 0.85em;
+      cursor: pointer;
+    }
+
+    table.modern .filter-button:hover {
+      background: var(--vscode-button-secondaryHoverBackground);
+    }
+
     table.modern .search-highlight {
       background: var(--vscode-editor-findMatchHighlightBackground);
       color: var(--vscode-editor-foreground);
@@ -447,9 +462,18 @@
       <thead id="regionsHeadModern">
         <tr>
           <th></th>
-          <th class="sortable-header" data-sort="name">Name <span id="sort-name" class="sort-indicator">↕</span></th>
-          <th class="sortable-header" data-sort="address">Address <span id="sort-address" class="sort-indicator">↕</span></th>
-          <th class="sortable-header" data-sort="size">Size <span id="sort-size" class="sort-indicator">↕</span></th>
+          <th class="sortable-header" data-sort="name">
+            Name <span id="sort-name" class="sort-indicator">↕</span>
+            <button class="filter-button" type="button" data-filter="name" aria-label="Filter name column">⛃</button>
+          </th>
+          <th class="sortable-header" data-sort="address">
+            Address <span id="sort-address" class="sort-indicator">↕</span>
+            <button class="filter-button" type="button" data-filter="address" aria-label="Filter address column">⛃</button>
+          </th>
+          <th class="sortable-header" data-sort="size">
+            Size <span id="sort-size" class="sort-indicator">↕</span>
+            <button class="filter-button" type="button" data-filter="size" aria-label="Filter size column">⛃</button>
+          </th>
           <th>Used</th>
           <th>Free</th>
         </tr>
