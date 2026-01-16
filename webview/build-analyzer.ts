@@ -79,12 +79,8 @@ let currentView: ViewMode = 'classic';
 let lastRegions: Region[] = [];
 const expandedKeys = new Set<string>();
 let selectedRowKey: string | null = null;
-let filterBarOpen = false;
-const filterState = {
-    name: '',
-    address: '',
-    size: ''
-};
+const selectedKeys = new Set<string>();
+let showSelectedOnly = false;
 
 // Get icon URIs from data attributes on body
 function getIconUris(): IconUris {
@@ -188,7 +184,11 @@ function fillTableRegions(regions: Region[], tableBody: HTMLTableSectionElement,
         tableTd6.className = 'right-align';
         tableTd6.appendChild(document.createTextNode(formatBytes(region.size - region.used)));
 
+        const tableTdSelect = document.createElement('td');
+        tableTdSelect.className = 'selection-cell';
+
         tableTr.appendChild(tableTd1);
+        tableTr.appendChild(tableTdSelect);
         tableTr.appendChild(tableTd2);
         tableTr.appendChild(tableTd3);
         tableTr.appendChild(tableTd4);
@@ -238,7 +238,11 @@ function fillTableRegions(regions: Region[], tableBody: HTMLTableSectionElement,
             const sectionTd6 = document.createElement('td');
             sectionTd6.className = 'right-align';
 
+            const sectionTdSelect = document.createElement('td');
+            sectionTdSelect.className = 'selection-cell';
+
             sectionTr.appendChild(sectionTd1);
+            sectionTr.appendChild(sectionTdSelect);
             sectionTr.appendChild(sectionTd2);
             sectionTr.appendChild(sectionTd3);
             sectionTr.appendChild(sectionTd4);
@@ -297,7 +301,17 @@ function fillTableRegions(regions: Region[], tableBody: HTMLTableSectionElement,
                 const pointTd6 = document.createElement('td');
                 pointTd6.className = 'right-align';
 
+                const pointTdSelect = document.createElement('td');
+                pointTdSelect.className = 'selection-cell';
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.className = 'row-select';
+                checkbox.dataset.key = pointTr.getAttribute('data-key') || '';
+                checkbox.checked = checkbox.dataset.key ? selectedKeys.has(checkbox.dataset.key) : false;
+                pointTdSelect.appendChild(checkbox);
+
                 pointTr.appendChild(pointTd1);
+                pointTr.appendChild(pointTdSelect);
                 pointTr.appendChild(pointTd2);
                 pointTr.appendChild(pointTd3);
                 pointTr.appendChild(pointTd4);
@@ -327,6 +341,25 @@ function parseSizeToBytes(sizeText: string): number {
     return value * (multipliers[unit] || 1);
 }
 
+function getColumnSelector(view: ViewMode, field: 'name' | 'address' | 'size'): string {
+    if (view === 'table') {
+        if (field === 'name') {
+            return 'td:nth-child(3)';
+        }
+        if (field === 'address') {
+            return 'td:nth-child(4)';
+        }
+        return 'td:nth-child(5)';
+    }
+    if (field === 'name') {
+        return 'td:nth-child(2)';
+    }
+    if (field === 'address') {
+        return 'td:nth-child(3)';
+    }
+    return 'td:nth-child(4)';
+}
+
 function performSearch(query: string, table: HTMLTableElement): void {
     const searchMatchCount = document.getElementById('searchMatchCount');
     const allRows = table.querySelectorAll<HTMLTableRowElement>('.toggleTr');
@@ -346,10 +379,11 @@ function performSearch(query: string, table: HTMLTableElement): void {
     const normalizedQuery = query.trim();
     const hasQuery = normalizedQuery.length > 0;
     const isTableViewTable = table === viewConfigs.table.table;
-    const hasFilters = isTableViewTable
-        && (filterState.name !== '' || filterState.address !== '' || filterState.size !== '');
+    const hasSelectionFilter = isTableViewTable && showSelectedOnly;
+    const currentViewMode: ViewMode = isTableViewTable ? 'table' : 'classic';
+    const nameSelector = getColumnSelector(currentViewMode, 'name');
 
-    if (!hasQuery && !hasFilters) {
+    if (!hasQuery && !hasSelectionFilter) {
         syncExpandedState();
         if (searchMatchCount) {
             searchMatchCount.textContent = '';
@@ -393,47 +427,22 @@ function performSearch(query: string, table: HTMLTableElement): void {
 
     const parentsToShow = new Set<string>();
 
-    const filterName = filterState.name.trim().toLowerCase();
-    const filterAddress = filterState.address.trim().toLowerCase().replace(/^0x/, '');
-    const filterSizeBytes = filterState.size.trim() ? parseSizeToBytes(filterState.size) : 0;
-    const hasSizeFilter = filterState.size.trim().length > 0;
-
-    const matchesFilters = (row: HTMLTableRowElement): boolean => {
-        if (!hasFilters) {
+    const matchesSelection = (row: HTMLTableRowElement): boolean => {
+        if (!hasSelectionFilter || hasQuery) {
             return true;
         }
-        const nameCell = row.querySelector('td:nth-child(2)');
-        const addressCell = row.querySelector('td:nth-child(3)');
-        const sizeCell = row.querySelector('td:nth-child(4)');
-
-        const nameText = nameCell ? nameCell.textContent?.trim().toLowerCase() || '' : '';
-        const addressText = addressCell ? addressCell.textContent?.trim().toLowerCase() || '' : '';
-        const normalizedAddress = addressText.replace(/^0x/, '');
-        const sizeText = sizeCell ? sizeCell.textContent?.trim() || '' : '';
-
-        if (filterName && !nameText.includes(filterName)) {
-            return false;
-        }
-        if (filterAddress && !normalizedAddress.includes(filterAddress)) {
-            return false;
-        }
-        if (hasSizeFilter) {
-            const sizeValue = parseSizeToBytes(sizeText);
-            if (sizeValue < filterSizeBytes) {
-                return false;
-            }
-        }
-        return true;
+        const rowKey = row.getAttribute('data-key') || '';
+        return rowKey ? selectedKeys.has(rowKey) : false;
     };
 
     allRows.forEach((row: HTMLTableRowElement) => {
         const htmlRow = row as HTMLElement;
         const level = parseInt(htmlRow.getAttribute('data-level') || '0', 10);
         if (level === 3) {
-            const nameCell = htmlRow.querySelector('td:nth-child(2)');
+            const nameCell = htmlRow.querySelector(nameSelector);
             const symbolName = nameCell ? nameCell.textContent?.trim() || '' : '';
             const matchesQuery = hasQuery ? matcher(symbolName) : true;
-            if (matchesQuery && matchesFilters(row)) {
+            if (matchesQuery && matchesSelection(row)) {
                 matchCount++;
                 htmlRow.style.display = '';
                 if (hasQuery) {
@@ -496,9 +505,9 @@ function performSearch(query: string, table: HTMLTableElement): void {
             searchMatchCount.textContent = matchCount > 0
                 ? 'Found: ' + matchCount + ' symbols'
                 : 'No matches';
-        } else if (hasFilters) {
+        } else if (hasSelectionFilter) {
             searchMatchCount.textContent = matchCount > 0
-                ? 'Filtered: ' + matchCount + ' symbols'
+                ? 'Selected: ' + matchCount + ' symbols'
                 : 'No matches';
         } else {
             searchMatchCount.textContent = '';
@@ -506,8 +515,11 @@ function performSearch(query: string, table: HTMLTableElement): void {
     }
 }
 
-function applySorting(field: string, isAscending: boolean, tableBody: HTMLTableSectionElement): void {
+function applySorting(field: string, isAscending: boolean, tableBody: HTMLTableSectionElement, view: ViewMode): void {
     const allRows = Array.from(tableBody.querySelectorAll<HTMLTableRowElement>('.toggleTr'));
+    const nameSelector = getColumnSelector(view, 'name');
+    const addressSelector = getColumnSelector(view, 'address');
+    const sizeSelector = getColumnSelector(view, 'size');
 
     interface RegionGroup {
         row: HTMLTableRowElement;
@@ -545,20 +557,20 @@ function applySorting(field: string, isAscending: boolean, tableBody: HTMLTableS
                     return valA - valB;
                 }
                 if (field === 'name') {
-                    const valA = (a.querySelector('td:nth-child(2)')?.textContent?.trim() || '').toLowerCase();
-                    const valB = (b.querySelector('td:nth-child(2)')?.textContent?.trim() || '').toLowerCase();
+                    const valA = (a.querySelector(nameSelector)?.textContent?.trim() || '').toLowerCase();
+                    const valB = (b.querySelector(nameSelector)?.textContent?.trim() || '').toLowerCase();
                     return isAscending ? valA.localeCompare(valB) : valB.localeCompare(valA);
                 }
                 if (field === 'address') {
-                    const addrTextA = a.querySelector('td:nth-child(3)')?.textContent?.trim() || '';
-                    const addrTextB = b.querySelector('td:nth-child(3)')?.textContent?.trim() || '';
+                    const addrTextA = a.querySelector(addressSelector)?.textContent?.trim() || '';
+                    const addrTextB = b.querySelector(addressSelector)?.textContent?.trim() || '';
                     const valA = parseInt(addrTextA, 16) || 0;
                     const valB = parseInt(addrTextB, 16) || 0;
                     return isAscending ? valA - valB : valB - valA;
                 }
                 if (field === 'size') {
-                    const sizeTextA = a.querySelector('td:nth-child(4)')?.textContent?.trim() || '';
-                    const sizeTextB = b.querySelector('td:nth-child(4)')?.textContent?.trim() || '';
+                    const sizeTextA = a.querySelector(sizeSelector)?.textContent?.trim() || '';
+                    const sizeTextB = b.querySelector(sizeSelector)?.textContent?.trim() || '';
                     const valA = parseSizeToBytes(sizeTextA);
                     const valB = parseSizeToBytes(sizeTextB);
                     return isAscending ? valA - valB : valB - valA;
@@ -675,18 +687,6 @@ function syncRowSelection(): void {
     });
 }
 
-function updateFilterBarVisibility(): void {
-    const filterBar = document.getElementById('filterBar');
-    if (!filterBar) {
-        return;
-    }
-    if (currentView !== 'table') {
-        filterBar.classList.remove('is-open');
-        return;
-    }
-    filterBar.classList.toggle('is-open', filterBarOpen);
-}
-
 function updateSortIndicators(view: ViewMode, sortState: SortState): void {
     const config = viewConfigs[view];
     const table = config.table;
@@ -744,7 +744,7 @@ function attachTableHandlers(view: ViewMode): void {
                     sortState.field = null;
                     sortState.isAscending = true;
                     updateSortIndicators(view, sortState);
-                    applySorting('original', sortState.isAscending, body);
+                    applySorting('original', sortState.isAscending, body, view);
                     return;
                 }
             } else {
@@ -753,7 +753,7 @@ function attachTableHandlers(view: ViewMode): void {
             }
 
             updateSortIndicators(view, sortState);
-            applySorting(field, sortState.isAscending, body);
+            applySorting(field, sortState.isAscending, body, view);
         });
     });
 
@@ -761,6 +761,7 @@ function attachTableHandlers(view: ViewMode): void {
         const target = e.target as HTMLElement;
         const sourceLink = target.closest('.source-link') as HTMLAnchorElement | null;
         const clickedRow = target.closest('tr.toggleTr') as HTMLTableRowElement | null;
+        const selectionInput = target.closest('input.row-select') as HTMLInputElement | null;
 
         if (clickedRow) {
             setRowSelection(clickedRow);
@@ -775,6 +776,24 @@ function attachTableHandlers(view: ViewMode): void {
                 lineNumber: parseInt(sourceLink.dataset.line || '0', 10)
             });
             return;
+        }
+
+        if (selectionInput) {
+            const rowKey = selectionInput.dataset.key;
+            if (rowKey) {
+                if (selectionInput.checked) {
+                    selectedKeys.add(rowKey);
+                } else {
+                    selectedKeys.delete(rowKey);
+                }
+            }
+            if (showSelectedOnly && currentView === 'table') {
+                const tableElement = viewConfigs.table.table;
+                if (tableElement) {
+                    const searchInput = document.getElementById('searchInput') as HTMLInputElement | null;
+                    performSearch(searchInput?.value ?? '', tableElement);
+                }
+            }
         }
 
         const toggleSpan = target.closest('.toggle');
@@ -839,7 +858,6 @@ function setView(nextView: ViewMode): void {
     document.body.classList.toggle('table-view', currentView === 'table');
     viewConfigs.classic.container?.classList.toggle('is-hidden', currentView !== 'classic');
     viewConfigs.table.container?.classList.toggle('is-hidden', currentView !== 'table');
-    updateFilterBarVisibility();
 
     const searchInput = document.getElementById('searchInput') as HTMLInputElement | null;
     if (searchInput && searchInput.value) {
@@ -879,11 +897,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const refreshButton = document.getElementById('refreshButton');
     const refreshPathsButton = document.getElementById('refreshPathsButton');
     const viewSelect = document.getElementById('viewSelect') as HTMLSelectElement | null;
-    const filterToggleButton = document.getElementById('filterToggleButton') as HTMLButtonElement | null;
-    const filterButtons = document.querySelectorAll<HTMLButtonElement>('.filter-button');
-    const filterNameInput = document.getElementById('filterName') as HTMLInputElement | null;
-    const filterAddressInput = document.getElementById('filterAddress') as HTMLInputElement | null;
-    const filterSizeInput = document.getElementById('filterSize') as HTMLInputElement | null;
+    const toggleSelectionButton = document.getElementById('toggleSelectionButton') as HTMLButtonElement | null;
+    const clearSelectionButton = document.getElementById('clearSelectionButton') as HTMLButtonElement | null;
 
     refreshButton?.addEventListener('click', () => {
         vscode.postMessage({ command: 'requestRefresh' });
@@ -898,53 +913,45 @@ document.addEventListener('DOMContentLoaded', () => {
         setView(nextView);
     });
 
-    filterToggleButton?.addEventListener('click', () => {
+    const updateSelectionToggleLabel = () => {
+        if (!toggleSelectionButton) {
+            return;
+        }
+        toggleSelectionButton.textContent = showSelectedOnly ? 'Show All' : 'Show Selected';
+    };
+
+    toggleSelectionButton?.addEventListener('click', () => {
         if (currentView !== 'table') {
             if (viewSelect) {
                 viewSelect.value = 'table';
             }
             setView('table');
         }
-        filterBarOpen = !filterBarOpen;
-        updateFilterBarVisibility();
-    });
-
-    filterButtons.forEach(button => {
-        button.addEventListener('click', (event: MouseEvent) => {
-            event.stopPropagation();
-            const filterTarget = button.dataset.filter;
-            if (currentView !== 'table') {
-                if (viewSelect) {
-                    viewSelect.value = 'table';
-                }
-                setView('table');
-            }
-            filterBarOpen = true;
-            updateFilterBarVisibility();
-            if (filterTarget === 'name') {
-                filterNameInput?.focus();
-            } else if (filterTarget === 'address') {
-                filterAddressInput?.focus();
-            } else if (filterTarget === 'size') {
-                filterSizeInput?.focus();
-            }
-        });
-    });
-
-    const onFilterChange = () => {
-        filterState.name = filterNameInput?.value ?? '';
-        filterState.address = filterAddressInput?.value ?? '';
-        filterState.size = filterSizeInput?.value ?? '';
+        showSelectedOnly = !showSelectedOnly;
+        updateSelectionToggleLabel();
         const table = viewConfigs.table.table;
         if (table) {
             const searchInput = document.getElementById('searchInput') as HTMLInputElement | null;
             performSearch(searchInput?.value ?? '', table);
         }
-    };
+    });
 
-    filterNameInput?.addEventListener('input', onFilterChange);
-    filterAddressInput?.addEventListener('input', onFilterChange);
-    filterSizeInput?.addEventListener('input', onFilterChange);
+    clearSelectionButton?.addEventListener('click', () => {
+        selectedKeys.clear();
+        const table = viewConfigs.table.table;
+        if (table) {
+            table.querySelectorAll<HTMLInputElement>('input.row-select').forEach(input => {
+                input.checked = false;
+            });
+        }
+        if (showSelectedOnly) {
+            const tableElement = viewConfigs.table.table;
+            if (tableElement) {
+                const searchInput = document.getElementById('searchInput') as HTMLInputElement | null;
+                performSearch(searchInput?.value ?? '', tableElement);
+            }
+        }
+    });
 
     const searchInput = document.getElementById('searchInput') as HTMLInputElement | null;
     const caseSensitiveBtn = document.getElementById('caseSensitive');
@@ -988,6 +995,7 @@ document.addEventListener('DOMContentLoaded', () => {
     attachTableHandlers('classic');
     attachTableHandlers('table');
     setView(currentView);
+    updateSelectionToggleLabel();
 
     document.addEventListener('click', (e: MouseEvent) => {
         const target = e.target as HTMLElement;
@@ -1005,12 +1013,18 @@ window.addEventListener('message', (event: MessageEvent) => {
     switch (message.command) {
         case 'showMapData':
             lastRegions = message.data || [];
+            selectedKeys.clear();
+            showSelectedOnly = false;
             renderTables(lastRegions);
             if (message.currentBuildFolderRelativePath) {
                 const folderDiv = document.getElementById('buildFolderPath');
                 if (folderDiv) {
                     folderDiv.textContent = message.currentBuildFolderRelativePath;
                 }
+            }
+            const toggleSelectionButton = document.getElementById('toggleSelectionButton') as HTMLButtonElement | null;
+            if (toggleSelectionButton) {
+                toggleSelectionButton.textContent = 'Show Selected';
             }
             const searchInput = document.getElementById('searchInput') as HTMLInputElement | null;
             if (searchInput && searchInput.value) {
