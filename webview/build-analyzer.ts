@@ -275,7 +275,7 @@ function parseSizeToBytes(sizeText: string): number {
 
 function performSearch(query: string): void {
     const searchMatchCount = document.getElementById('searchMatchCount');
-    const allRows = document.querySelectorAll('.toggleTr');
+    const allRows = document.querySelectorAll<HTMLTableRowElement>('.toggleTr');
     const caseSensitiveBtn = document.getElementById('caseSensitive');
     const wholeWordBtn = document.getElementById('wholeWord');
     const useRegexBtn = document.getElementById('useRegex');
@@ -285,7 +285,7 @@ function performSearch(query: string): void {
     const useRegex = useRegexBtn?.classList.contains('active') ?? false;
 
     // Remove previous highlights
-    document.querySelectorAll('.search-highlight').forEach(el => {
+    document.querySelectorAll<HTMLElement>('.search-highlight').forEach((el: HTMLElement) => {
         el.classList.remove('search-highlight');
     });
 
@@ -293,11 +293,11 @@ function performSearch(query: string): void {
 
     if (!query) {
         // Reset to default view - hide all child rows
-        allRows.forEach(row => {
-            const htmlRow = row as HTMLElement;
-            const level = parseInt(htmlRow.getAttribute('data-level') || '0', 10);
-            if (level === 1) {
-                htmlRow.style.display = '';
+    allRows.forEach((row: HTMLTableRowElement) => {
+        const htmlRow = row as HTMLElement;
+        const level = parseInt(htmlRow.getAttribute('data-level') || '0', 10);
+        if (level === 1) {
+            htmlRow.style.display = '';
                 const toggle = htmlRow.querySelector('.toggle');
                 if (toggle) {
                   toggle.textContent = '+';
@@ -354,7 +354,7 @@ function performSearch(query: string): void {
     const parentsToShow = new Set<string>();
 
     // First pass: find matching symbols (level 3)
-    allRows.forEach(row => {
+    allRows.forEach((row: HTMLTableRowElement) => {
         const htmlRow = row as HTMLElement;
         const level = parseInt(htmlRow.getAttribute('data-level') || '0', 10);
         if (level === 3) {
@@ -386,7 +386,7 @@ function performSearch(query: string): void {
     });
 
     // Second pass: show/hide sections and regions based on matches
-    allRows.forEach(row => {
+    allRows.forEach((row: HTMLTableRowElement) => {
         const htmlRow = row as HTMLElement;
         const level = parseInt(htmlRow.getAttribute('data-level') || '0', 10);
         const id = htmlRow.getAttribute('data-id') || '';
@@ -432,23 +432,23 @@ function applySorting(field: string, isAscending: boolean): void {
       return;
     }
 
-    const allRows = Array.from(tableBody.querySelectorAll('.toggleTr'));
+    const allRows = Array.from(tableBody.querySelectorAll<HTMLTableRowElement>('.toggleTr'));
 
     // Group rows by hierarchy
     interface RegionGroup {
-        row: Element;
+        row: HTMLTableRowElement;
         sections: SectionGroup[];
     }
     interface SectionGroup {
-        row: Element;
-        symbols: Element[];
+        row: HTMLTableRowElement;
+        symbols: HTMLTableRowElement[];
     }
 
     const regions: RegionGroup[] = [];
     let currentRegion: RegionGroup | null = null;
     let currentSection: SectionGroup | null = null;
 
-    allRows.forEach(row => {
+    allRows.forEach((row: HTMLTableRowElement) => {
         const level = parseInt(row.getAttribute('data-level') || '0', 10);
         if (level === 1) {
             currentRegion = { row: row, sections: [] };
@@ -466,26 +466,28 @@ function applySorting(field: string, isAscending: boolean): void {
     regions.forEach(region => {
         region.sections.forEach(section => {
             section.symbols.sort((a, b) => {
-                let valA: number | string, valB: number | string;
                 if (field === 'original') {
-                    valA = parseInt(a.getAttribute('data-original-index') || '0', 10);
-                    valB = parseInt(b.getAttribute('data-original-index') || '0', 10);
+                    const valA = parseInt(a.getAttribute('data-original-index') || '0', 10);
+                    const valB = parseInt(b.getAttribute('data-original-index') || '0', 10);
                     return valA - valB;
-                } else if (field === 'name') {
-                    valA = (a.querySelector('td:nth-child(2)')?.textContent?.trim() || '').toLowerCase();
-                    valB = (b.querySelector('td:nth-child(2)')?.textContent?.trim() || '').toLowerCase();
+                }
+                if (field === 'name') {
+                    const valA = (a.querySelector('td:nth-child(2)')?.textContent?.trim() || '').toLowerCase();
+                    const valB = (b.querySelector('td:nth-child(2)')?.textContent?.trim() || '').toLowerCase();
                     return isAscending ? valA.localeCompare(valB) : valB.localeCompare(valA);
-                } else if (field === 'address') {
+                }
+                if (field === 'address') {
                     const addrTextA = a.querySelector('td:nth-child(3)')?.textContent?.trim() || '';
                     const addrTextB = b.querySelector('td:nth-child(3)')?.textContent?.trim() || '';
-                    valA = parseInt(addrTextA, 16) || 0;
-                    valB = parseInt(addrTextB, 16) || 0;
+                    const valA = parseInt(addrTextA, 16) || 0;
+                    const valB = parseInt(addrTextB, 16) || 0;
                     return isAscending ? valA - valB : valB - valA;
-                } else if (field === 'size') {
+                }
+                if (field === 'size') {
                     const sizeTextA = a.querySelector('td:nth-child(4)')?.textContent?.trim() || '';
                     const sizeTextB = b.querySelector('td:nth-child(4)')?.textContent?.trim() || '';
-                    valA = parseSizeToBytes(sizeTextA);
-                    valB = parseSizeToBytes(sizeTextB);
+                    const valA = parseSizeToBytes(sizeTextA);
+                    const valB = parseSizeToBytes(sizeTextB);
                     return isAscending ? valA - valB : valB - valA;
                 }
                 return 0;
@@ -520,7 +522,7 @@ function applySorting(field: string, isAscending: boolean): void {
 }
 
 function updateSortIndicators(currentSortField: string | null, isAscending: boolean): void {
-    document.querySelectorAll('.sort-indicator').forEach(indicator => {
+    document.querySelectorAll<HTMLElement>('.sort-indicator').forEach((indicator: HTMLElement) => {
         indicator.textContent = '↕';
         indicator.classList.remove('active');
     });
@@ -564,7 +566,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 200);
     });
 
-    searchInput?.addEventListener('keydown', (e) => {
+    searchInput?.addEventListener('keydown', (e: KeyboardEvent) => {
         if (e.key === 'Escape') {
             searchInput.value = '';
             performSearch('');
@@ -585,7 +587,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentSortField: string | null = null;
     let isAscending = true;
 
-    document.querySelectorAll('.sortable-header').forEach(header => {
+    document.querySelectorAll<HTMLElement>('.sortable-header').forEach((header: HTMLElement) => {
         header.addEventListener('click', () => {
             const field = header.getAttribute('data-sort');
             if (!field) {
@@ -614,7 +616,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // Handle table click events
-document.getElementById('regionsTable')?.addEventListener('click', (e) => {
+document.getElementById('regionsTable')?.addEventListener('click', (e: MouseEvent) => {
     const target = e.target as HTMLElement;
     const sourceLink = target.closest('.source-link') as HTMLAnchorElement | null;
 
@@ -642,9 +644,9 @@ document.getElementById('regionsTable')?.addEventListener('click', (e) => {
         }
 
         const parentId = tr.getAttribute('data-id');
-        const childRows = document.querySelectorAll(`tr[data-parent="${parentId}"]`);
+        const childRows = document.querySelectorAll<HTMLTableRowElement>(`tr[data-parent="${parentId}"]`);
 
-        childRows.forEach(child => {
+        childRows.forEach((child: HTMLTableRowElement) => {
             const htmlChild = child as HTMLElement;
             htmlChild.style.display = htmlChild.style.display === 'none' ? '' : 'none';
             
@@ -659,8 +661,8 @@ document.getElementById('regionsTable')?.addEventListener('click', (e) => {
             const childLevel = parseInt(child.getAttribute('data-level') || '0', 10);
 
             if (htmlChild.style.display === 'none' && childLevel === 2) {
-                const grandChildRows = document.querySelectorAll(`tr[data-parent="${childId}"]`);
-                grandChildRows.forEach(grandChild => {
+                const grandChildRows = document.querySelectorAll<HTMLTableRowElement>(`tr[data-parent="${childId}"]`);
+                grandChildRows.forEach((grandChild: HTMLTableRowElement) => {
                     const htmlGrandChild = grandChild as HTMLElement;
                     if (htmlGrandChild.style.display !== 'none') {
                         htmlGrandChild.style.display = 'none';
@@ -674,7 +676,7 @@ document.getElementById('regionsTable')?.addEventListener('click', (e) => {
 });
 
 // Handle messages from extension
-window.addEventListener('message', event => {
+window.addEventListener('message', (event: MessageEvent) => {
     const message = event.data;
 
     switch (message.command) {
