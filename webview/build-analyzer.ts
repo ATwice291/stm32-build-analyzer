@@ -352,12 +352,12 @@ function getColumnSelector(view: ViewMode, field: 'name' | 'address' | 'size'): 
         return 'td:nth-child(5)';
     }
     if (field === 'name') {
-        return 'td:nth-child(2)';
-    }
-    if (field === 'address') {
         return 'td:nth-child(3)';
     }
-    return 'td:nth-child(4)';
+    if (field === 'address') {
+        return 'td:nth-child(4)';
+    }
+    return 'td:nth-child(5)';
 }
 
 function performSearch(query: string, table: HTMLTableElement): void {
@@ -899,6 +899,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const viewSelect = document.getElementById('viewSelect') as HTMLSelectElement | null;
     const toggleSelectionButton = document.getElementById('toggleSelectionButton') as HTMLButtonElement | null;
     const clearSelectionButton = document.getElementById('clearSelectionButton') as HTMLButtonElement | null;
+    const clearSelectionButtonClassic = document.getElementById('clearSelectionButtonClassic') as HTMLButtonElement | null;
 
     refreshButton?.addEventListener('click', () => {
         vscode.postMessage({ command: 'requestRefresh' });
@@ -921,22 +922,18 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     toggleSelectionButton?.addEventListener('click', () => {
-        if (currentView !== 'table') {
-            if (viewSelect) {
-                viewSelect.value = 'table';
-            }
-            setView('table');
-        }
         showSelectedOnly = !showSelectedOnly;
         updateSelectionToggleLabel();
-        const table = viewConfigs.table.table;
-        if (table) {
-            const searchInput = document.getElementById('searchInput') as HTMLInputElement | null;
-            performSearch(searchInput?.value ?? '', table);
+        if (currentView === 'table') {
+            const table = viewConfigs.table.table;
+            if (table) {
+                const searchInput = document.getElementById('searchInput') as HTMLInputElement | null;
+                performSearch(searchInput?.value ?? '', table);
+            }
         }
     });
 
-    clearSelectionButton?.addEventListener('click', () => {
+    const clearSelection = () => {
         selectedKeys.clear();
         const table = viewConfigs.table.table;
         if (table) {
@@ -944,14 +941,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 input.checked = false;
             });
         }
-        if (showSelectedOnly) {
+        if (showSelectedOnly && currentView === 'table') {
             const tableElement = viewConfigs.table.table;
             if (tableElement) {
                 const searchInput = document.getElementById('searchInput') as HTMLInputElement | null;
                 performSearch(searchInput?.value ?? '', tableElement);
             }
         }
-    });
+    };
+
+    clearSelectionButton?.addEventListener('click', clearSelection);
+    clearSelectionButtonClassic?.addEventListener('click', clearSelection);
 
     const searchInput = document.getElementById('searchInput') as HTMLInputElement | null;
     const caseSensitiveBtn = document.getElementById('caseSensitive');

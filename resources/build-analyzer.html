@@ -39,6 +39,11 @@
       background: var(--vscode-button-secondaryHoverBackground);
     }
 
+    #toggleSelectionButton {
+      min-width: 120px;
+      text-align: center;
+    }
+
     .toolbar input[type="text"] {
       min-width: 220px;
       padding: 6px 8px;
@@ -377,6 +382,32 @@
       border-color: var(--vscode-focusBorder);
     }
 
+    table.gray .selection-header {
+      text-align: center;
+      width: 40px;
+    }
+
+    table.gray .selection-cell {
+      text-align: center;
+    }
+
+    table.gray .clear-selection {
+      margin-left: 4px;
+      padding: 0 4px;
+      border: 1px solid var(--vscode-button-secondaryBorder);
+      background: var(--vscode-button-secondaryBackground);
+      color: var(--vscode-button-secondaryForeground);
+      border-radius: 2px;
+      font-size: 10px;
+      line-height: 1.2;
+      vertical-align: middle;
+      cursor: pointer;
+    }
+
+    table.gray .clear-selection:hover {
+      background: var(--vscode-button-secondaryHoverBackground);
+    }
+
     table.gray a.source-link {
       color: var(--vscode-textLink-foreground);
       text-decoration: none;
@@ -418,6 +449,9 @@
       <thead id="regionsHead">
         <tr>
           <td></td>
+          <td class="selection-header">
+            Sel <button class="clear-selection" id="clearSelectionButtonClassic" type="button" aria-label="Clear selection">✕</button>
+          </td>
           <td class="sortable-header" data-sort="name" title="Sort symbols by name">
             Name <button class="sort-button" data-sort-key="name" data-active="false" aria-label="Sort by name">⇅</button>
           </td>
