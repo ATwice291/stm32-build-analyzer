@@ -379,7 +379,7 @@ function performSearch(query: string, table: HTMLTableElement): void {
     const normalizedQuery = query.trim();
     const hasQuery = normalizedQuery.length > 0;
     const isTableViewTable = table === viewConfigs.table.table;
-    const hasSelectionFilter = isTableViewTable && showSelectedOnly;
+    const hasSelectionFilter = showSelectedOnly;
     const currentViewMode: ViewMode = isTableViewTable ? 'table' : 'classic';
     const nameSelector = getColumnSelector(currentViewMode, 'name');
 
