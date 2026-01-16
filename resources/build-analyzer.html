@@ -171,7 +171,9 @@
     }
 
     table.modern {
-      width: 100%;
+      width: auto;
+      max-width: 100%;
+      display: inline-table;
       border-collapse: collapse;
       background: var(--vscode-editor-background);
     }
@@ -245,6 +247,11 @@
 
     table.modern a.source-link:hover {
       text-decoration: underline;
+    }
+
+    table.modern tr.row-selected td {
+      background: var(--vscode-list-activeSelectionBackground);
+      color: var(--vscode-list-activeSelectionForeground);
     }
 
     table.gray {
@@ -344,6 +351,11 @@
 
     table.gray a.source-link:hover {
       text-decoration: underline;
+    }
+
+    table.gray tr.row-selected td {
+      background: var(--vscode-list-activeSelectionBackground);
+      color: var(--vscode-list-activeSelectionForeground);
     }
   </style>
 </head>

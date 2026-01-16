@@ -77,6 +77,8 @@ const sortStates: Record<ViewMode, SortState> = {
 
 let currentView: ViewMode = 'classic';
 let lastRegions: Region[] = [];
+const expandedKeys = new Set<string>();
+let selectedRowKey: string | null = null;
 
 // Get icon URIs from data attributes on body
 function getIconUris(): IconUris {
@@ -105,6 +107,14 @@ function resetTableRegions(tableBody: HTMLTableSectionElement | null): void {
     }
 }
 
+function buildRegionKey(region: Region): string {
+    return `region:${region.name}`;
+}
+
+function buildSectionKey(region: Region, section: Section): string {
+    return `section:${region.name}::${section.name}`;
+}
+
 function fillTableRegions(regions: Region[], tableBody: HTMLTableSectionElement, icons: IconUris): void {
     tableBody.innerHTML = '';
 
@@ -113,12 +123,14 @@ function fillTableRegions(regions: Region[], tableBody: HTMLTableSectionElement,
     regions.forEach(region => {
         id++;
         const regionId = id;
+        const regionKey = buildRegionKey(region);
         const percent = region.used / region.size * 100;
 
         const tableTr = document.createElement('tr');
         tableTr.className = 'toggleTr level-1';
         tableTr.setAttribute('data-level', '1');
         tableTr.setAttribute('data-id', regionId.toString());
+        tableTr.setAttribute('data-key', regionKey);
 
         const tableTd1 = document.createElement('td');
         const plus = document.createElement('span');
@@ -181,11 +193,13 @@ function fillTableRegions(regions: Region[], tableBody: HTMLTableSectionElement,
         region.sections.forEach(section => {
             id++;
             const sectionId = id;
+            const sectionKey = buildSectionKey(region, section);
             const sectionTr = document.createElement('tr');
             sectionTr.className = 'toggleTr level-2';
             sectionTr.setAttribute('data-level', '2');
             sectionTr.setAttribute('data-id', sectionId.toString());
             sectionTr.setAttribute('data-parent', regionId.toString());
+            sectionTr.setAttribute('data-key', sectionKey);
             sectionTr.style.display = 'none';
 
             const sectionTd1 = document.createElement('td');
@@ -236,6 +250,7 @@ function fillTableRegions(regions: Region[], tableBody: HTMLTableSectionElement,
                 pointTr.setAttribute('data-id', id.toString());
                 pointTr.setAttribute('data-parent', sectionId.toString());
                 pointTr.setAttribute('data-original-index', symbolIndex.toString());
+                pointTr.setAttribute('data-key', `${sectionKey}::${symbol.name}::${symbol.startAddress}`);
                 pointTr.style.display = 'none';
 
                 const pointTd1 = document.createElement('td');
@@ -540,6 +555,88 @@ function applySorting(field: string, isAscending: boolean, tableBody: HTMLTableS
     });
 }
 
+function applyExpandedState(table: HTMLTableElement): void {
+    const rows = table.querySelectorAll<HTMLTableRowElement>('.toggleTr');
+    const regionExpandedById = new Map<string, boolean>();
+    const sectionExpandedById = new Map<string, boolean>();
+
+    rows.forEach((row: HTMLTableRowElement) => {
+        const level = parseInt(row.getAttribute('data-level') || '0', 10);
+        const rowId = row.getAttribute('data-id') || '';
+        const rowKey = row.getAttribute('data-key') || '';
+        const toggle = row.querySelector('.toggle');
+
+        if (level === 1) {
+            const isExpanded = rowKey ? expandedKeys.has(rowKey) : false;
+            regionExpandedById.set(rowId, isExpanded);
+            row.style.display = '';
+            if (toggle) {
+                toggle.textContent = isExpanded ? '−' : '+';
+            }
+        } else if (level === 2) {
+            const parentId = row.getAttribute('data-parent') || '';
+            const parentExpanded = regionExpandedById.get(parentId) ?? false;
+            const isExpanded = parentExpanded && (rowKey ? expandedKeys.has(rowKey) : false);
+            sectionExpandedById.set(rowId, isExpanded);
+            row.style.display = parentExpanded ? '' : 'none';
+            if (toggle) {
+                toggle.textContent = isExpanded ? '−' : '+';
+            }
+        } else if (level === 3) {
+            const parentId = row.getAttribute('data-parent') || '';
+            const parentExpanded = sectionExpandedById.get(parentId) ?? false;
+            row.style.display = parentExpanded ? '' : 'none';
+        }
+    });
+}
+
+function syncExpandedState(): void {
+    (Object.keys(viewConfigs) as ViewMode[]).forEach(view => {
+        const table = viewConfigs[view].table;
+        if (table) {
+            applyExpandedState(table);
+        }
+    });
+}
+
+function clearRowSelection(): void {
+    (Object.keys(viewConfigs) as ViewMode[]).forEach(view => {
+        const table = viewConfigs[view].table;
+        if (!table) {
+            return;
+        }
+        table.querySelectorAll<HTMLTableRowElement>('tr.row-selected').forEach(row => {
+            row.classList.remove('row-selected');
+        });
+    });
+    selectedRowKey = null;
+}
+
+function setRowSelection(row: HTMLTableRowElement | null): void {
+    clearRowSelection();
+    if (!row) {
+        return;
+    }
+    row.classList.add('row-selected');
+    selectedRowKey = row.getAttribute('data-key') || null;
+}
+
+function syncRowSelection(): void {
+    if (!selectedRowKey) {
+        return;
+    }
+    (Object.keys(viewConfigs) as ViewMode[]).forEach(view => {
+        const table = viewConfigs[view].table;
+        if (!table) {
+            return;
+        }
+        const row = table.querySelector<HTMLTableRowElement>(`tr[data-key="${selectedRowKey}"]`);
+        if (row) {
+            row.classList.add('row-selected');
+        }
+    });
+}
+
 function updateSortIndicators(view: ViewMode, sortState: SortState): void {
     const config = viewConfigs[view];
     const table = config.table;
@@ -613,6 +710,12 @@ function attachTableHandlers(view: ViewMode): void {
     table.addEventListener('click', (e: MouseEvent) => {
         const target = e.target as HTMLElement;
         const sourceLink = target.closest('.source-link') as HTMLAnchorElement | null;
+        const clickedRow = target.closest('tr.toggleTr') as HTMLTableRowElement | null;
+
+        if (clickedRow) {
+            setRowSelection(clickedRow);
+            syncRowSelection();
+        }
 
         if (sourceLink) {
             e.preventDefault();
@@ -638,6 +741,8 @@ function attachTableHandlers(view: ViewMode): void {
             }
 
             const parentId = tr.getAttribute('data-id');
+            const rowKey = tr.getAttribute('data-key') || '';
+            const rowLevel = parseInt(tr.getAttribute('data-level') || '0', 10);
             const childRows = table.querySelectorAll<HTMLTableRowElement>(`tr[data-parent="${parentId}"]`);
 
             childRows.forEach((child: HTMLTableRowElement) => {
@@ -666,6 +771,14 @@ function attachTableHandlers(view: ViewMode): void {
             });
 
             toggleSpan.textContent = toggleSpan.textContent === '+' ? '−' : '+';
+            if (rowKey && rowLevel <= 2) {
+                if (toggleSpan.textContent === '−') {
+                    expandedKeys.add(rowKey);
+                } else {
+                    expandedKeys.delete(rowKey);
+                }
+                syncExpandedState();
+            }
         }
     });
 }
@@ -684,6 +797,7 @@ function setView(nextView: ViewMode): void {
             performSearch(searchInput.value.trim(), table);
         }
     }
+    syncRowSelection();
 }
 
 function renderTables(regions: Region[]): void {
@@ -698,6 +812,8 @@ function renderTables(regions: Region[]): void {
         fillTableRegions(regions, config.body, icons);
         updateSortIndicators(view, sortStates[view]);
     });
+    syncExpandedState();
+    syncRowSelection();
 }
 
 // Initialize when DOM is ready
@@ -763,6 +879,14 @@ document.addEventListener('DOMContentLoaded', () => {
     attachTableHandlers('classic');
     attachTableHandlers('table');
     setView(currentView);
+
+    document.addEventListener('click', (e: MouseEvent) => {
+        const target = e.target as HTMLElement;
+        if (target.closest('table')) {
+            return;
+        }
+        clearRowSelection();
+    });
 });
 
 // Handle messages from extension
