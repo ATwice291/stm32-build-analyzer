@@ -91,6 +91,8 @@
       margin: 8px;
       padding: 0;
       font-family: var(--vscode-editor-font-family);
+      color: var(--vscode-editor-foreground);
+      background: transparent;
     }
 
     body.classic-view .toolbar {
@@ -255,7 +257,9 @@
     }
 
     body.classic-view table.gray {
-      width: 100%;
+      width: auto;
+      max-width: 100%;
+      display: inline-table;
       text-align: left;
       border-collapse: collapse;
     }
