@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="${csp}">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>STM32 Build Analyzer</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+    }
+
+    body {
+      font-family: var(--vscode-font-family);
+      color: var(--vscode-editor-foreground);
+      background: var(--vscode-editor-background);
+      margin: 0;
+      padding: 16px;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .toolbar button {
+      padding: 6px 10px;
+      border-radius: 4px;
+      border: 1px solid var(--vscode-button-border, transparent);
+      background: var(--vscode-button-secondaryBackground);
+      color: var(--vscode-button-secondaryForeground);
+      cursor: pointer;
+    }
+
+    .toolbar button:hover {
+      background: var(--vscode-button-secondaryHoverBackground);
+    }
+
+    .toolbar input[type="text"] {
+      min-width: 220px;
+      padding: 6px 8px;
+      border-radius: 4px;
+      border: 1px solid var(--vscode-input-border);
+      background: var(--vscode-input-background);
+      color: var(--vscode-input-foreground);
+    }
+
+    .toolbar .toggle-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px 8px;
+      border-radius: 4px;
+      border: 1px solid var(--vscode-button-secondaryBorder, var(--vscode-button-border));
+      background: var(--vscode-button-secondaryBackground);
+      color: var(--vscode-button-secondaryForeground);
+      cursor: pointer;
+      font-size: 12px;
+      user-select: none;
+    }
+
+    .toolbar .toggle-button.active {
+      border-color: var(--vscode-focusBorder);
+      background: var(--vscode-button-hoverBackground, var(--vscode-button-secondaryHoverBackground));
+    }
+
+    #searchMatchCount {
+      font-size: 12px;
+      color: var(--vscode-descriptionForeground);
+      margin-left: 4px;
+    }
+
+    .current-build-folder {
+      margin-bottom: 12px;
+      font-size: 12px;
+      color: var(--vscode-descriptionForeground);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--vscode-editor-background);
+    }
+
+    thead {
+      background: var(--vscode-editorWidget-background);
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    th,
+    td {
+      border: 1px solid var(--vscode-editorWidget-border);
+      padding: 6px 8px;
+      font-size: 12px;
+    }
+
+    th {
+      text-align: left;
+      font-weight: 600;
+    }
+
+    td.right-align {
+      text-align: right;
+    }
+
+    .bar {
+      background-color: var(--vscode-editorWidget-border);
+      width: 100px;
+      height: 16px;
+      display: inline-block;
+    }
+
+    .toggle {
+      cursor: pointer;
+      display: inline-flex;
+      width: 20px;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+    }
+
+    .sortable-header {
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .sort-indicator {
+      margin-left: 6px;
+      font-size: 10px;
+      color: var(--vscode-descriptionForeground);
+    }
+
+    .sort-indicator.active {
+      color: var(--vscode-foreground);
+      font-weight: 600;
+    }
+
+    .search-highlight {
+      background: var(--vscode-editor-findMatchHighlightBackground);
+      color: var(--vscode-editor-foreground);
+      border-radius: 2px;
+      padding: 0 2px;
+    }
+
+    a.source-link {
+      color: var(--vscode-textLink-foreground);
+      text-decoration: none;
+    }
+
+    a.source-link:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <button id="refreshButton">Refresh Analyze</button>
+    <button id="refreshPathsButton">Change Build Folder</button>
+    <input id="searchInput" type="text" placeholder="Search symbols...">
+    <button id="caseSensitive" class="toggle-button" type="button" title="Case sensitive search">Aa</button>
+    <button id="wholeWord" class="toggle-button" type="button" title="Whole word search">\b</button>
+    <button id="useRegex" class="toggle-button" type="button" title="Regex search">.*</button>
+    <span id="searchMatchCount"></span>
+  </div>
+
+  <div class="current-build-folder">
+    <strong>Current Build Folder:</strong>
+    <span id="buildFolderPath"></span>
+  </div>
+
+  <table id="regionsTable">
+    <thead id="regionsHead">
+      <tr>
+        <th></th>
+        <th class="sortable-header" data-sort="name">Name <span id="sort-name" class="sort-indicator">↕</span></th>
+        <th class="sortable-header" data-sort="address">Address <span id="sort-address" class="sort-indicator">↕</span></th>
+        <th class="sortable-header" data-sort="size">Size <span id="sort-size" class="sort-indicator">↕</span></th>
+        <th>Used</th>
+        <th>Free</th>
+      </tr>
+    </thead>
+    <tbody id="regionsBody"></tbody>
+  </table>
+
+  <script nonce="${nonce}" src="${scriptUri}"></script>
+</body>
+</html>
