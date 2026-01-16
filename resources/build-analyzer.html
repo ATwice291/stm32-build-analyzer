@@ -87,6 +87,35 @@
       color: var(--vscode-descriptionForeground);
     }
 
+    body.classic-view .toolbar {
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+
+    body.classic-view .toolbar button {
+      padding: 5px 10px;
+      border-radius: 2px;
+      border: 1px solid var(--vscode-button-secondaryBorder);
+      background: var(--vscode-button-secondaryBackground);
+      color: var(--vscode-button-secondaryForeground);
+    }
+
+    body.classic-view .toolbar input[type="text"],
+    body.classic-view .toolbar select {
+      min-width: 200px;
+      padding: 4px 6px;
+      border-radius: 2px;
+    }
+
+    body.classic-view .toolbar .toggle-button {
+      padding: 2px 6px;
+      border-radius: 2px;
+    }
+
+    body.classic-view .current-build-folder {
+      margin-bottom: 10px;
+    }
+
     .view-pane {
       display: block;
     }

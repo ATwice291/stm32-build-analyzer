@@ -672,6 +672,8 @@ function attachTableHandlers(view: ViewMode): void {
 
 function setView(nextView: ViewMode): void {
     currentView = nextView;
+    document.body.classList.toggle('classic-view', currentView === 'classic');
+    document.body.classList.toggle('table-view', currentView === 'table');
     viewConfigs.classic.container?.classList.toggle('is-hidden', currentView !== 'classic');
     viewConfigs.table.container?.classList.toggle('is-hidden', currentView !== 'table');
 
