@@ -57,16 +57,16 @@ const viewConfigs: Record<ViewMode, ViewTableConfig> = {
     classic: {
         view: 'classic',
         container: document.getElementById('classicView'),
-        table: document.getElementById('regionsTableClassic') as HTMLTableElement | null,
-        body: document.getElementById('regionsBodyClassic') as HTMLTableSectionElement | null,
-        head: document.getElementById('regionsHeadClassic')
+        table: document.getElementById('regionsTable') as HTMLTableElement | null,
+        body: document.getElementById('regionsBody') as HTMLTableSectionElement | null,
+        head: document.getElementById('regionsHead')
     },
     table: {
         view: 'table',
         container: document.getElementById('tableView'),
-        table: document.getElementById('regionsTable') as HTMLTableElement | null,
-        body: document.getElementById('regionsBody') as HTMLTableSectionElement | null,
-        head: document.getElementById('regionsHead')
+        table: document.getElementById('regionsTableModern') as HTMLTableElement | null,
+        body: document.getElementById('regionsBodyModern') as HTMLTableSectionElement | null,
+        head: document.getElementById('regionsHeadModern')
     }
 };
 

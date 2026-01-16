@@ -211,16 +211,16 @@
       border-left: none;
     }
 
-    table.gray #regionsHeadClassic td {
+    table.gray #regionsHead td {
       text-align: center;
     }
 
-    table.gray #regionsBodyClassic td {
+    table.gray #regionsBody td {
       padding-left: 5px;
       padding-right: 5px;
     }
 
-    table.gray #regionsBodyClassic td.right-align {
+    table.gray #regionsBody td.right-align {
       text-align: right;
     }
 
@@ -276,8 +276,8 @@
   </div>
 
   <section id="classicView" class="view-pane">
-    <table id="regionsTableClassic" class="gray">
-      <thead id="regionsHeadClassic">
+    <table id="regionsTable" class="gray">
+      <thead id="regionsHead">
         <tr>
           <td></td>
           <td class="sortable-header" data-sort="name" title="Sort symbols by name">
@@ -293,13 +293,13 @@
           <td>Free</td>
         </tr>
       </thead>
-      <tbody id="regionsBodyClassic"></tbody>
+      <tbody id="regionsBody"></tbody>
     </table>
   </section>
 
   <section id="tableView" class="view-pane is-hidden">
-    <table id="regionsTable" class="modern">
-      <thead id="regionsHead">
+    <table id="regionsTableModern" class="modern">
+      <thead id="regionsHeadModern">
         <tr>
           <th></th>
           <th class="sortable-header" data-sort="name">Name <span id="sort-name" class="sort-indicator">↕</span></th>
@@ -309,7 +309,7 @@
           <th>Free</th>
         </tr>
       </thead>
-      <tbody id="regionsBody"></tbody>
+      <tbody id="regionsBodyModern"></tbody>
     </table>
   </section>
 
