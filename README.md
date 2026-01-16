@@ -19,8 +19,8 @@ This fork removes that dependency, adds broader file handling, and enhances the 
 
 ✅ **Removed CMake dependency** – Works with any build system (Makefile, CubeIDE, etc.)  
 ✅ **Custom build folder support** – Easily set via UI button or command  
-✅ **Improved file discovery** – More robust handling of `.map` and `.elf` files  
-✅ **Optimized UI** – Visual memory usage indicators and sortable symbol view  
+✅ **Improved file discovery** – More robust handling of `.map` and `.elf` files, multi build folders handling,   
+✅ **Optimized UI** – Visual memory usage indicators, serach option and sortable symbol view  
 
 ---
 
