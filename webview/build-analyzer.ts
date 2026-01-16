@@ -79,6 +79,12 @@ let currentView: ViewMode = 'classic';
 let lastRegions: Region[] = [];
 const expandedKeys = new Set<string>();
 let selectedRowKey: string | null = null;
+let filterBarOpen = false;
+const filterState = {
+    name: '',
+    address: '',
+    size: ''
+};
 
 // Get icon URIs from data attributes on body
 function getIconUris(): IconUris {
@@ -149,8 +155,8 @@ function fillTableRegions(regions: Region[], tableBody: HTMLTableSectionElement,
             height: 100%;
             color: ${percent > 50 ? 'white' : 'black'};
             text-align: center;
-            font-size: 12px;
-            line-height: 1.5;
+            font-size: 0.85em;
+            line-height: 1.4em;
         `);
         progress.textContent = `${percent.toFixed(2)}%`;
         bar.appendChild(progress);
@@ -337,27 +343,16 @@ function performSearch(query: string, table: HTMLTableElement): void {
     });
 
     let matchCount = 0;
+    const normalizedQuery = query.trim();
+    const hasQuery = normalizedQuery.length > 0;
+    const isTableViewTable = table === viewConfigs.table.table;
+    const hasFilters = isTableViewTable
+        && (filterState.name !== '' || filterState.address !== '' || filterState.size !== '');
 
-    if (!query) {
-        allRows.forEach((row: HTMLTableRowElement) => {
-            const htmlRow = row as HTMLElement;
-            const level = parseInt(htmlRow.getAttribute('data-level') || '0', 10);
-            if (level === 1) {
-                htmlRow.style.display = '';
-                const toggle = htmlRow.querySelector('.toggle');
-                if (toggle) {
-                  toggle.textContent = '+';
-                }
-            } else {
-                const toggle = htmlRow.querySelector('.toggle');
-                if (toggle) {
-                  toggle.textContent = '+';
-                }
-                htmlRow.style.display = 'none';
-            }
-        });
+    if (!hasQuery && !hasFilters) {
+        syncExpandedState();
         if (searchMatchCount) {
-          searchMatchCount.textContent = '';
+            searchMatchCount.textContent = '';
         }
         return;
     }
@@ -366,11 +361,11 @@ function performSearch(query: string, table: HTMLTableElement): void {
     try {
         if (useRegex) {
             const flags = caseSensitive ? '' : 'i';
-            const pattern = wholeWord ? '\\b' + query + '\\b' : query;
+            const pattern = wholeWord ? '\\b' + normalizedQuery + '\\b' : normalizedQuery;
             const regex = new RegExp(pattern, flags);
             matcher = (text: string) => regex.test(text);
         } else {
-            const searchQuery = caseSensitive ? query : query.toLowerCase();
+            const searchQuery = caseSensitive ? normalizedQuery : normalizedQuery.toLowerCase();
             if (wholeWord) {
                 matcher = (text: string) => {
                     const searchIn = caseSensitive ? text : text.toLowerCase();
@@ -398,17 +393,52 @@ function performSearch(query: string, table: HTMLTableElement): void {
 
     const parentsToShow = new Set<string>();
 
+    const filterName = filterState.name.trim().toLowerCase();
+    const filterAddress = filterState.address.trim().toLowerCase().replace(/^0x/, '');
+    const filterSizeBytes = filterState.size.trim() ? parseSizeToBytes(filterState.size) : 0;
+    const hasSizeFilter = filterState.size.trim().length > 0;
+
+    const matchesFilters = (row: HTMLTableRowElement): boolean => {
+        if (!hasFilters) {
+            return true;
+        }
+        const nameCell = row.querySelector('td:nth-child(2)');
+        const addressCell = row.querySelector('td:nth-child(3)');
+        const sizeCell = row.querySelector('td:nth-child(4)');
+
+        const nameText = nameCell ? nameCell.textContent?.trim().toLowerCase() || '' : '';
+        const addressText = addressCell ? addressCell.textContent?.trim().toLowerCase() || '' : '';
+        const normalizedAddress = addressText.replace(/^0x/, '');
+        const sizeText = sizeCell ? sizeCell.textContent?.trim() || '' : '';
+
+        if (filterName && !nameText.includes(filterName)) {
+            return false;
+        }
+        if (filterAddress && !normalizedAddress.includes(filterAddress)) {
+            return false;
+        }
+        if (hasSizeFilter) {
+            const sizeValue = parseSizeToBytes(sizeText);
+            if (sizeValue < filterSizeBytes) {
+                return false;
+            }
+        }
+        return true;
+    };
+
     allRows.forEach((row: HTMLTableRowElement) => {
         const htmlRow = row as HTMLElement;
         const level = parseInt(htmlRow.getAttribute('data-level') || '0', 10);
         if (level === 3) {
             const nameCell = htmlRow.querySelector('td:nth-child(2)');
             const symbolName = nameCell ? nameCell.textContent?.trim() || '' : '';
-
-            if (matcher(symbolName)) {
+            const matchesQuery = hasQuery ? matcher(symbolName) : true;
+            if (matchesQuery && matchesFilters(row)) {
                 matchCount++;
                 htmlRow.style.display = '';
-                nameCell?.classList.add('search-highlight');
+                if (hasQuery) {
+                    nameCell?.classList.add('search-highlight');
+                }
 
                 const sectionId = htmlRow.getAttribute('data-parent');
                 if (sectionId) {
@@ -462,9 +492,17 @@ function performSearch(query: string, table: HTMLTableElement): void {
     });
 
     if (searchMatchCount) {
-        searchMatchCount.textContent = matchCount > 0 
-            ? 'Found: ' + matchCount + ' symbols'
-            : 'No matches';
+        if (hasQuery) {
+            searchMatchCount.textContent = matchCount > 0
+                ? 'Found: ' + matchCount + ' symbols'
+                : 'No matches';
+        } else if (hasFilters) {
+            searchMatchCount.textContent = matchCount > 0
+                ? 'Filtered: ' + matchCount + ' symbols'
+                : 'No matches';
+        } else {
+            searchMatchCount.textContent = '';
+        }
     }
 }
 
@@ -637,6 +675,18 @@ function syncRowSelection(): void {
     });
 }
 
+function updateFilterBarVisibility(): void {
+    const filterBar = document.getElementById('filterBar');
+    if (!filterBar) {
+        return;
+    }
+    if (currentView !== 'table') {
+        filterBar.classList.remove('is-open');
+        return;
+    }
+    filterBar.classList.toggle('is-open', filterBarOpen);
+}
+
 function updateSortIndicators(view: ViewMode, sortState: SortState): void {
     const config = viewConfigs[view];
     const table = config.table;
@@ -789,12 +839,18 @@ function setView(nextView: ViewMode): void {
     document.body.classList.toggle('table-view', currentView === 'table');
     viewConfigs.classic.container?.classList.toggle('is-hidden', currentView !== 'classic');
     viewConfigs.table.container?.classList.toggle('is-hidden', currentView !== 'table');
+    updateFilterBarVisibility();
 
     const searchInput = document.getElementById('searchInput') as HTMLInputElement | null;
     if (searchInput && searchInput.value) {
         const table = viewConfigs[currentView].table;
         if (table) {
             performSearch(searchInput.value.trim(), table);
+        }
+    } else if (currentView === 'table') {
+        const table = viewConfigs.table.table;
+        if (table) {
+            performSearch('', table);
         }
     }
     syncRowSelection();
@@ -823,6 +879,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const refreshButton = document.getElementById('refreshButton');
     const refreshPathsButton = document.getElementById('refreshPathsButton');
     const viewSelect = document.getElementById('viewSelect') as HTMLSelectElement | null;
+    const filterToggleButton = document.getElementById('filterToggleButton') as HTMLButtonElement | null;
+    const filterNameInput = document.getElementById('filterName') as HTMLInputElement | null;
+    const filterAddressInput = document.getElementById('filterAddress') as HTMLInputElement | null;
+    const filterSizeInput = document.getElementById('filterSize') as HTMLInputElement | null;
 
     refreshButton?.addEventListener('click', () => {
         vscode.postMessage({ command: 'requestRefresh' });
@@ -836,6 +896,32 @@ document.addEventListener('DOMContentLoaded', () => {
         const nextView = (viewSelect.value as ViewMode) || 'classic';
         setView(nextView);
     });
+
+    filterToggleButton?.addEventListener('click', () => {
+        if (currentView !== 'table') {
+            if (viewSelect) {
+                viewSelect.value = 'table';
+            }
+            setView('table');
+        }
+        filterBarOpen = !filterBarOpen;
+        updateFilterBarVisibility();
+    });
+
+    const onFilterChange = () => {
+        filterState.name = filterNameInput?.value ?? '';
+        filterState.address = filterAddressInput?.value ?? '';
+        filterState.size = filterSizeInput?.value ?? '';
+        const table = viewConfigs.table.table;
+        if (table) {
+            const searchInput = document.getElementById('searchInput') as HTMLInputElement | null;
+            performSearch(searchInput?.value ?? '', table);
+        }
+    };
+
+    filterNameInput?.addEventListener('input', onFilterChange);
+    filterAddressInput?.addEventListener('input', onFilterChange);
+    filterSizeInput?.addEventListener('input', onFilterChange);
 
     const searchInput = document.getElementById('searchInput') as HTMLInputElement | null;
     const caseSensitiveBtn = document.getElementById('caseSensitive');

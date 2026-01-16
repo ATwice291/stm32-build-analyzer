@@ -75,6 +75,31 @@
       background: var(--vscode-button-hoverBackground, var(--vscode-button-secondaryHoverBackground));
     }
 
+    .filter-bar {
+      display: none;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .filter-bar input[type="text"] {
+      min-width: 180px;
+      padding: 6px 8px;
+      border-radius: 4px;
+      border: 1px solid var(--vscode-input-border);
+      background: var(--vscode-input-background);
+      color: var(--vscode-input-foreground);
+    }
+
+    .filter-bar input[type="text"]::placeholder {
+      color: var(--vscode-input-placeholderForeground);
+    }
+
+    body.table-view .filter-bar.is-open {
+      display: flex;
+    }
+
     #searchMatchCount {
       font-size: 12px;
       color: var(--vscode-descriptionForeground);
@@ -189,7 +214,7 @@
     table.modern td {
       border: 1px solid var(--vscode-editorWidget-border);
       padding: 6px 8px;
-      font-size: 13px;
+      font-size: 14px;
     }
 
     table.modern th {
@@ -204,7 +229,7 @@
     table.modern .bar {
       background-color: var(--vscode-editorWidget-border);
       width: 100px;
-      height: 16px;
+      height: 1.4em;
       display: inline-block;
     }
 
@@ -224,12 +249,21 @@
 
     table.modern .sort-indicator {
       margin-left: 6px;
-      font-size: 10px;
-      color: var(--vscode-descriptionForeground);
+      font-size: 0.85em;
+      color: var(--vscode-button-secondaryForeground);
+      border: 1px solid var(--vscode-button-secondaryBorder, var(--vscode-button-border));
+      background: var(--vscode-button-secondaryBackground);
+      border-radius: 4px;
+      padding: 1px 6px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
     }
 
     table.modern .sort-indicator.active {
-      color: var(--vscode-foreground);
+      color: var(--vscode-button-secondaryForeground);
+      border-color: var(--vscode-focusBorder);
+      background: var(--vscode-button-hoverBackground, var(--vscode-button-secondaryHoverBackground));
       font-weight: 600;
     }
 
@@ -367,11 +401,18 @@
       <option value="classic">Classic View</option>
       <option value="table">Table View</option>
     </select>
+    <button id="filterToggleButton" type="button">Filters</button>
     <input id="searchInput" type="text" placeholder="Search symbols...">
     <button id="caseSensitive" class="toggle-button" type="button" title="Case sensitive search">Aa</button>
     <button id="wholeWord" class="toggle-button" type="button" title="Whole word search">\b</button>
     <button id="useRegex" class="toggle-button" type="button" title="Regex search">.*</button>
     <span id="searchMatchCount"></span>
+  </div>
+
+  <div id="filterBar" class="filter-bar" aria-label="Table view filters">
+    <input id="filterName" type="text" placeholder="Filter name...">
+    <input id="filterAddress" type="text" placeholder="Filter address...">
+    <input id="filterSize" type="text" placeholder="Min size (e.g. 1 KB)...">
   </div>
 
   <div class="current-build-folder">
