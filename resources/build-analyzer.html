@@ -88,38 +88,38 @@
     }
 
     body.classic-view {
-      margin: 8px;
-      padding: 0;
-      font-family: var(--vscode-editor-font-family);
+      margin: 0;
+      padding: 16px;
+      font-family: var(--vscode-font-family);
       color: var(--vscode-editor-foreground);
-      background: transparent;
+      background: var(--vscode-editor-background);
     }
 
     body.classic-view .toolbar {
       display: flex;
+      flex-wrap: wrap;
       align-items: center;
-      flex-wrap: nowrap;
       gap: 8px;
-      margin-bottom: 10px;
+      margin-bottom: 12px;
     }
 
     body.classic-view .toolbar button {
-      padding: 5px 10px;
-      cursor: pointer;
-      background-color: var(--vscode-button-secondaryBackground);
+      padding: 6px 10px;
+      border-radius: 4px;
+      border: 1px solid var(--vscode-button-border, transparent);
+      background: var(--vscode-button-secondaryBackground);
       color: var(--vscode-button-secondaryForeground);
-      border: 1px solid var(--vscode-button-secondaryBorder);
-      border-radius: 2px;
+      cursor: pointer;
     }
 
     body.classic-view .toolbar button:hover {
-      background-color: var(--vscode-button-secondaryHoverBackground);
+      background: var(--vscode-button-secondaryHoverBackground);
     }
 
     body.classic-view .toolbar input[type="text"] {
-      width: 220px;
-      padding: 4px 6px;
-      border-radius: 2px;
+      min-width: 220px;
+      padding: 6px 8px;
+      border-radius: 4px;
       border: 1px solid var(--vscode-input-border);
       background: var(--vscode-input-background);
       color: var(--vscode-input-foreground);
@@ -130,8 +130,8 @@
     }
 
     body.classic-view .toolbar select {
-      padding: 4px 6px;
-      border-radius: 2px;
+      padding: 6px 8px;
+      border-radius: 4px;
       border: 1px solid var(--vscode-input-border);
       background: var(--vscode-input-background);
       color: var(--vscode-input-foreground);
@@ -140,26 +140,26 @@
     body.classic-view .toolbar .toggle-button {
       display: inline-flex;
       align-items: center;
-      gap: 4px;
-      padding: 2px 6px;
-      border-radius: 2px;
-      border: 1px solid var(--vscode-button-secondaryBorder);
+      justify-content: center;
+      padding: 4px 8px;
+      border-radius: 4px;
+      border: 1px solid var(--vscode-button-secondaryBorder, var(--vscode-button-border));
       background: var(--vscode-button-secondaryBackground);
       color: var(--vscode-button-secondaryForeground);
       cursor: pointer;
-      user-select: none;
       font-size: 12px;
+      user-select: none;
     }
 
     body.classic-view .toolbar .toggle-button.active {
       border-color: var(--vscode-focusBorder);
-      background: var(--vscode-button-secondaryBackground);
+      background: var(--vscode-button-hoverBackground, var(--vscode-button-secondaryHoverBackground));
     }
 
     body.classic-view .current-build-folder {
-      margin-bottom: 10px;
-      font-size: inherit;
-      color: inherit;
+      margin-bottom: 12px;
+      font-size: 12px;
+      color: var(--vscode-descriptionForeground);
     }
 
     .view-pane {
