@@ -36,7 +36,47 @@ interface IconUris {
     icon3Uri: string;
 }
 
+type ViewMode = 'classic' | 'table';
+
+interface ViewTableConfig {
+    view: ViewMode;
+    container: HTMLElement | null;
+    table: HTMLTableElement | null;
+    body: HTMLTableSectionElement | null;
+    head: HTMLElement | null;
+}
+
+interface SortState {
+    field: string | null;
+    isAscending: boolean;
+}
+
 const vscode = acquireVsCodeApi();
+
+const viewConfigs: Record<ViewMode, ViewTableConfig> = {
+    classic: {
+        view: 'classic',
+        container: document.getElementById('classicView'),
+        table: document.getElementById('regionsTableClassic') as HTMLTableElement | null,
+        body: document.getElementById('regionsBodyClassic') as HTMLTableSectionElement | null,
+        head: document.getElementById('regionsHeadClassic')
+    },
+    table: {
+        view: 'table',
+        container: document.getElementById('tableView'),
+        table: document.getElementById('regionsTable') as HTMLTableElement | null,
+        body: document.getElementById('regionsBody') as HTMLTableSectionElement | null,
+        head: document.getElementById('regionsHead')
+    }
+};
+
+const sortStates: Record<ViewMode, SortState> = {
+    classic: { field: null, isAscending: true },
+    table: { field: null, isAscending: true }
+};
+
+let currentView: ViewMode = 'classic';
+let lastRegions: Region[] = [];
 
 // Get icon URIs from data attributes on body
 function getIconUris(): IconUris {
@@ -59,21 +99,14 @@ function formatBytes(bytes: number, decimals = 2): string {
     return `${value} ${sizes[i]}`;
 }
 
-function resetTableRegions(): void {
-    const body = document.getElementById('regionsBody');
-    if (body) {
-        body.innerHTML = '';
+function resetTableRegions(tableBody: HTMLTableSectionElement | null): void {
+    if (tableBody) {
+        tableBody.innerHTML = '';
     }
 }
 
-function fillTableRegions(regions: Region[]): void {
-    const tableBody = document.getElementById('regionsBody');
-    if (!tableBody) {
-      return;
-    }
-
+function fillTableRegions(regions: Region[], tableBody: HTMLTableSectionElement, icons: IconUris): void {
     tableBody.innerHTML = '';
-    const icons = getIconUris();
 
     let id = 0;
 
@@ -273,9 +306,9 @@ function parseSizeToBytes(sizeText: string): number {
     return value * (multipliers[unit] || 1);
 }
 
-function performSearch(query: string): void {
+function performSearch(query: string, table: HTMLTableElement): void {
     const searchMatchCount = document.getElementById('searchMatchCount');
-    const allRows = document.querySelectorAll<HTMLTableRowElement>('.toggleTr');
+    const allRows = table.querySelectorAll<HTMLTableRowElement>('.toggleTr');
     const caseSensitiveBtn = document.getElementById('caseSensitive');
     const wholeWordBtn = document.getElementById('wholeWord');
     const useRegexBtn = document.getElementById('useRegex');
@@ -284,20 +317,18 @@ function performSearch(query: string): void {
     const wholeWord = wholeWordBtn?.classList.contains('active') ?? false;
     const useRegex = useRegexBtn?.classList.contains('active') ?? false;
 
-    // Remove previous highlights
-    document.querySelectorAll<HTMLElement>('.search-highlight').forEach((el: HTMLElement) => {
+    table.querySelectorAll<HTMLElement>('.search-highlight').forEach((el: HTMLElement) => {
         el.classList.remove('search-highlight');
     });
 
     let matchCount = 0;
 
     if (!query) {
-        // Reset to default view - hide all child rows
-    allRows.forEach((row: HTMLTableRowElement) => {
-        const htmlRow = row as HTMLElement;
-        const level = parseInt(htmlRow.getAttribute('data-level') || '0', 10);
-        if (level === 1) {
-            htmlRow.style.display = '';
+        allRows.forEach((row: HTMLTableRowElement) => {
+            const htmlRow = row as HTMLElement;
+            const level = parseInt(htmlRow.getAttribute('data-level') || '0', 10);
+            if (level === 1) {
+                htmlRow.style.display = '';
                 const toggle = htmlRow.querySelector('.toggle');
                 if (toggle) {
                   toggle.textContent = '+';
@@ -316,7 +347,6 @@ function performSearch(query: string): void {
         return;
     }
 
-    // Build matcher function based on options
     let matcher: (text: string) => boolean;
     try {
         if (useRegex) {
@@ -353,7 +383,6 @@ function performSearch(query: string): void {
 
     const parentsToShow = new Set<string>();
 
-    // First pass: find matching symbols (level 3)
     allRows.forEach((row: HTMLTableRowElement) => {
         const htmlRow = row as HTMLElement;
         const level = parseInt(htmlRow.getAttribute('data-level') || '0', 10);
@@ -366,13 +395,12 @@ function performSearch(query: string): void {
                 htmlRow.style.display = '';
                 nameCell?.classList.add('search-highlight');
 
-                // Mark parent section and region to show
                 const sectionId = htmlRow.getAttribute('data-parent');
                 if (sectionId) {
                   parentsToShow.add(sectionId);
                 }
 
-                const sectionRow = document.querySelector(`tr[data-id="${sectionId}"]`);
+                const sectionRow = table.querySelector(`tr[data-id="${sectionId}"]`);
                 if (sectionRow) {
                     const regionId = sectionRow.getAttribute('data-parent');
                     if (regionId) {
@@ -385,7 +413,6 @@ function performSearch(query: string): void {
         }
     });
 
-    // Second pass: show/hide sections and regions based on matches
     allRows.forEach((row: HTMLTableRowElement) => {
         const htmlRow = row as HTMLElement;
         const level = parseInt(htmlRow.getAttribute('data-level') || '0', 10);
@@ -426,15 +453,9 @@ function performSearch(query: string): void {
     }
 }
 
-function applySorting(field: string, isAscending: boolean): void {
-    const tableBody = document.getElementById('regionsBody');
-    if (!tableBody) {
-      return;
-    }
-
+function applySorting(field: string, isAscending: boolean, tableBody: HTMLTableSectionElement): void {
     const allRows = Array.from(tableBody.querySelectorAll<HTMLTableRowElement>('.toggleTr'));
 
-    // Group rows by hierarchy
     interface RegionGroup {
         row: HTMLTableRowElement;
         sections: SectionGroup[];
@@ -462,7 +483,6 @@ function applySorting(field: string, isAscending: boolean): void {
         }
     });
 
-    // Sort symbols within each section (only level 3 - symbols)
     regions.forEach(region => {
         region.sections.forEach(section => {
             section.symbols.sort((a, b) => {
@@ -495,7 +515,6 @@ function applySorting(field: string, isAscending: boolean): void {
         });
     });
 
-    // Rebuild table with updated IDs
     tableBody.innerHTML = '';
     let newId = 0;
     regions.forEach(region => {
@@ -521,19 +540,162 @@ function applySorting(field: string, isAscending: boolean): void {
     });
 }
 
-function updateSortIndicators(currentSortField: string | null, isAscending: boolean): void {
-    document.querySelectorAll<HTMLElement>('.sort-indicator').forEach((indicator: HTMLElement) => {
+function updateSortIndicators(view: ViewMode, sortState: SortState): void {
+    const config = viewConfigs[view];
+    const table = config.table;
+    if (!table) {
+        return;
+    }
+
+    table.querySelectorAll<HTMLElement>('.sort-indicator').forEach((indicator: HTMLElement) => {
         indicator.textContent = '↕';
         indicator.classList.remove('active');
     });
 
-    if (currentSortField) {
-        const indicator = document.getElementById('sort-' + currentSortField);
+    table.querySelectorAll<HTMLButtonElement>('.sort-button').forEach((button: HTMLButtonElement) => {
+        button.dataset.active = 'false';
+        button.textContent = '⇅';
+    });
+
+    if (sortState.field) {
+        const indicator = table.querySelector<HTMLElement>('#sort-' + sortState.field);
         if (indicator) {
-            indicator.textContent = isAscending ? '↑' : '↓';
+            indicator.textContent = sortState.isAscending ? '↑' : '↓';
             indicator.classList.add('active');
         }
+
+        const button = table.querySelector<HTMLButtonElement>(`.sort-button[data-sort-key="${sortState.field}"]`);
+        if (button) {
+            button.dataset.active = 'true';
+            button.textContent = sortState.isAscending ? '▲' : '▼';
+        }
     }
+}
+
+function attachTableHandlers(view: ViewMode): void {
+    const config = viewConfigs[view];
+    const table = config.table;
+    const body = config.body;
+    const head = config.head;
+
+    if (!table || !body || !head) {
+        return;
+    }
+
+    head.querySelectorAll<HTMLElement>('.sortable-header').forEach((header: HTMLElement) => {
+        header.addEventListener('click', () => {
+            const field = header.getAttribute('data-sort');
+            if (!field) {
+              return;
+            }
+
+            const sortState = sortStates[view];
+            if (sortState.field === field) {
+                if (sortState.isAscending) {
+                    sortState.isAscending = false;
+                } else {
+                    sortState.field = null;
+                    sortState.isAscending = true;
+                    updateSortIndicators(view, sortState);
+                    applySorting('original', sortState.isAscending, body);
+                    return;
+                }
+            } else {
+                sortState.field = field;
+                sortState.isAscending = true;
+            }
+
+            updateSortIndicators(view, sortState);
+            applySorting(field, sortState.isAscending, body);
+        });
+    });
+
+    table.addEventListener('click', (e: MouseEvent) => {
+        const target = e.target as HTMLElement;
+        const sourceLink = target.closest('.source-link') as HTMLAnchorElement | null;
+
+        if (sourceLink) {
+            e.preventDefault();
+            vscode.postMessage({
+                command: 'openFile',
+                filePath: sourceLink.dataset.file,
+                lineNumber: parseInt(sourceLink.dataset.line || '0', 10)
+            });
+            return;
+        }
+
+        const toggleSpan = target.closest('.toggle');
+        const searchInput = document.getElementById('searchInput') as HTMLInputElement | null;
+
+        if (searchInput && searchInput.value) {
+            return;
+        }
+
+        if (toggleSpan) {
+            const tr = toggleSpan.closest('tr');
+            if (!tr) {
+              return;
+            }
+
+            const parentId = tr.getAttribute('data-id');
+            const childRows = table.querySelectorAll<HTMLTableRowElement>(`tr[data-parent="${parentId}"]`);
+
+            childRows.forEach((child: HTMLTableRowElement) => {
+                const htmlChild = child as HTMLElement;
+                htmlChild.style.display = htmlChild.style.display === 'none' ? '' : 'none';
+                
+                if (htmlChild.style.display === 'none') {
+                    const toggle = htmlChild.querySelector('.toggle');
+                    if (toggle) {
+                      toggle.textContent = '+';
+                    }
+                }
+
+                const childId = child.getAttribute('data-id');
+                const childLevel = parseInt(child.getAttribute('data-level') || '0', 10);
+
+                if (htmlChild.style.display === 'none' && childLevel === 2) {
+                    const grandChildRows = table.querySelectorAll<HTMLTableRowElement>(`tr[data-parent="${childId}"]`);
+                    grandChildRows.forEach((grandChild: HTMLTableRowElement) => {
+                        const htmlGrandChild = grandChild as HTMLElement;
+                        if (htmlGrandChild.style.display !== 'none') {
+                            htmlGrandChild.style.display = 'none';
+                        }
+                    });
+                }
+            });
+
+            toggleSpan.textContent = toggleSpan.textContent === '+' ? '−' : '+';
+        }
+    });
+}
+
+function setView(nextView: ViewMode): void {
+    currentView = nextView;
+    viewConfigs.classic.container?.classList.toggle('is-hidden', currentView !== 'classic');
+    viewConfigs.table.container?.classList.toggle('is-hidden', currentView !== 'table');
+
+    const searchInput = document.getElementById('searchInput') as HTMLInputElement | null;
+    if (searchInput && searchInput.value) {
+        const table = viewConfigs[currentView].table;
+        if (table) {
+            performSearch(searchInput.value.trim(), table);
+        }
+    }
+}
+
+function renderTables(regions: Region[]): void {
+    const icons = getIconUris();
+
+    (Object.keys(viewConfigs) as ViewMode[]).forEach(view => {
+        const config = viewConfigs[view];
+        if (!config.body) {
+            return;
+        }
+        resetTableRegions(config.body);
+        fillTableRegions(regions, config.body, icons);
+        updateSortIndicators(view, sortStates[view]);
+    });
 }
 
 // Initialize when DOM is ready
@@ -542,6 +704,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const refreshButton = document.getElementById('refreshButton');
     const refreshPathsButton = document.getElementById('refreshPathsButton');
+    const viewSelect = document.getElementById('viewSelect') as HTMLSelectElement | null;
 
     refreshButton?.addEventListener('click', () => {
         vscode.postMessage({ command: 'requestRefresh' });
@@ -551,7 +714,11 @@ document.addEventListener('DOMContentLoaded', () => {
         vscode.postMessage({ command: 'refreshPaths' });
     });
 
-    // Search functionality
+    viewSelect?.addEventListener('change', () => {
+        const nextView = (viewSelect.value as ViewMode) || 'classic';
+        setView(nextView);
+    });
+
     const searchInput = document.getElementById('searchInput') as HTMLInputElement | null;
     const caseSensitiveBtn = document.getElementById('caseSensitive');
     const wholeWordBtn = document.getElementById('wholeWord');
@@ -562,117 +729,38 @@ document.addEventListener('DOMContentLoaded', () => {
     searchInput?.addEventListener('input', () => {
         clearTimeout(searchTimeout);
         searchTimeout = setTimeout(() => {
-            performSearch(searchInput.value.trim());
+            const table = viewConfigs[currentView].table;
+            if (table) {
+                performSearch(searchInput.value.trim(), table);
+            }
         }, 200);
     });
 
     searchInput?.addEventListener('keydown', (e: KeyboardEvent) => {
         if (e.key === 'Escape') {
             searchInput.value = '';
-            performSearch('');
+            const table = viewConfigs[currentView].table;
+            if (table) {
+                performSearch('', table);
+            }
         }
     });
 
-    // Toggle search options
     [caseSensitiveBtn, wholeWordBtn, useRegexBtn].forEach(btn => {
         btn?.addEventListener('click', () => {
             btn.classList.toggle('active');
             if (searchInput) {
-              performSearch(searchInput.value.trim());
+              const table = viewConfigs[currentView].table;
+              if (table) {
+                performSearch(searchInput.value.trim(), table);
+              }
             }
         });
     });
 
-    // Sort functionality - clickable headers
-    let currentSortField: string | null = null;
-    let isAscending = true;
-
-    document.querySelectorAll<HTMLElement>('.sortable-header').forEach((header: HTMLElement) => {
-        header.addEventListener('click', () => {
-            const field = header.getAttribute('data-sort');
-            if (!field) {
-              return;
-            }
-
-            if (currentSortField === field) {
-                if (isAscending) {
-                    isAscending = false;
-                } else {
-                    currentSortField = null;
-                    isAscending = true;
-                    updateSortIndicators(currentSortField, isAscending);
-                    applySorting('original', isAscending);
-                    return;
-                }
-            } else {
-                currentSortField = field;
-                isAscending = true;
-            }
-            
-            updateSortIndicators(currentSortField, isAscending);
-            applySorting(field, isAscending);
-        });
-    });
-});
-
-// Handle table click events
-document.getElementById('regionsTable')?.addEventListener('click', (e: MouseEvent) => {
-    const target = e.target as HTMLElement;
-    const sourceLink = target.closest('.source-link') as HTMLAnchorElement | null;
-
-    if (sourceLink) {
-        e.preventDefault();
-        vscode.postMessage({
-            command: 'openFile',
-            filePath: sourceLink.dataset.file,
-            lineNumber: parseInt(sourceLink.dataset.line || '0', 10)
-        });
-        return;
-    }
-
-    const toggleSpan = target.closest('.toggle');
-    const searchInput = document.getElementById('searchInput') as HTMLInputElement | null;
-
-    if (searchInput && searchInput.value) {
-        return;
-    }
-
-    if (toggleSpan) {
-        const tr = toggleSpan.closest('tr');
-        if (!tr) {
-          return;
-        }
-
-        const parentId = tr.getAttribute('data-id');
-        const childRows = document.querySelectorAll<HTMLTableRowElement>(`tr[data-parent="${parentId}"]`);
-
-        childRows.forEach((child: HTMLTableRowElement) => {
-            const htmlChild = child as HTMLElement;
-            htmlChild.style.display = htmlChild.style.display === 'none' ? '' : 'none';
-            
-            if (htmlChild.style.display === 'none') {
-                const toggle = htmlChild.querySelector('.toggle');
-                if (toggle) {
-                  toggle.textContent = '+';
-                }
-            }
-
-            const childId = child.getAttribute('data-id');
-            const childLevel = parseInt(child.getAttribute('data-level') || '0', 10);
-
-            if (htmlChild.style.display === 'none' && childLevel === 2) {
-                const grandChildRows = document.querySelectorAll<HTMLTableRowElement>(`tr[data-parent="${childId}"]`);
-                grandChildRows.forEach((grandChild: HTMLTableRowElement) => {
-                    const htmlGrandChild = grandChild as HTMLElement;
-                    if (htmlGrandChild.style.display !== 'none') {
-                        htmlGrandChild.style.display = 'none';
-                    }
-                });
-            }
-        });
-
-        toggleSpan.textContent = toggleSpan.textContent === '+' ? '−' : '+';
-    }
+    attachTableHandlers('classic');
+    attachTableHandlers('table');
+    setView(currentView);
 });
 
 // Handle messages from extension
@@ -681,18 +769,20 @@ window.addEventListener('message', (event: MessageEvent) => {
 
     switch (message.command) {
         case 'showMapData':
-            resetTableRegions();
-            fillTableRegions(message.data);
+            lastRegions = message.data || [];
+            renderTables(lastRegions);
             if (message.currentBuildFolderRelativePath) {
                 const folderDiv = document.getElementById('buildFolderPath');
                 if (folderDiv) {
                     folderDiv.textContent = message.currentBuildFolderRelativePath;
                 }
             }
-            // Reset search when data is refreshed
             const searchInput = document.getElementById('searchInput') as HTMLInputElement | null;
             if (searchInput && searchInput.value) {
-                performSearch(searchInput.value.trim());
+                const table = viewConfigs[currentView].table;
+                if (table) {
+                    performSearch(searchInput.value.trim(), table);
+                }
             }
             break;
     }

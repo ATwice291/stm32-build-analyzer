@@ -48,6 +48,14 @@
       color: var(--vscode-input-foreground);
     }
 
+    .toolbar select {
+      padding: 6px 8px;
+      border-radius: 4px;
+      border: 1px solid var(--vscode-input-border);
+      background: var(--vscode-input-background);
+      color: var(--vscode-input-foreground);
+    }
+
     .toolbar .toggle-button {
       display: inline-flex;
       align-items: center;
@@ -79,43 +87,51 @@
       color: var(--vscode-descriptionForeground);
     }
 
-    table {
+    .view-pane {
+      display: block;
+    }
+
+    .view-pane.is-hidden {
+      display: none;
+    }
+
+    table.modern {
       width: 100%;
       border-collapse: collapse;
       background: var(--vscode-editor-background);
     }
 
-    thead {
+    table.modern thead {
       background: var(--vscode-editorWidget-background);
       position: sticky;
       top: 0;
       z-index: 1;
     }
 
-    th,
-    td {
+    table.modern th,
+    table.modern td {
       border: 1px solid var(--vscode-editorWidget-border);
       padding: 6px 8px;
       font-size: 12px;
     }
 
-    th {
+    table.modern th {
       text-align: left;
       font-weight: 600;
     }
 
-    td.right-align {
+    table.modern td.right-align {
       text-align: right;
     }
 
-    .bar {
+    table.modern .bar {
       background-color: var(--vscode-editorWidget-border);
       width: 100px;
       height: 16px;
       display: inline-block;
     }
 
-    .toggle {
+    table.modern .toggle {
       cursor: pointer;
       display: inline-flex;
       width: 20px;
@@ -124,36 +140,118 @@
       user-select: none;
     }
 
-    .sortable-header {
+    table.modern .sortable-header {
       cursor: pointer;
       user-select: none;
     }
 
-    .sort-indicator {
+    table.modern .sort-indicator {
       margin-left: 6px;
       font-size: 10px;
       color: var(--vscode-descriptionForeground);
     }
 
-    .sort-indicator.active {
+    table.modern .sort-indicator.active {
       color: var(--vscode-foreground);
       font-weight: 600;
     }
 
-    .search-highlight {
+    table.modern .search-highlight {
       background: var(--vscode-editor-findMatchHighlightBackground);
       color: var(--vscode-editor-foreground);
       border-radius: 2px;
       padding: 0 2px;
     }
 
-    a.source-link {
+    table.modern a.source-link {
       color: var(--vscode-textLink-foreground);
       text-decoration: none;
     }
 
-    a.source-link:hover {
+    table.modern a.source-link:hover {
       text-decoration: underline;
+    }
+
+    table.gray {
+      background-color: var(--vscode-editor-background);
+      color: var(--vscode-editor-foreground);
+      font-family: var(--vscode-editor-font-family);
+      width: 100%;
+      text-align: left;
+      border-collapse: collapse;
+    }
+
+    table.gray td,
+    table.gray th {
+      border: 1px solid var(--highlight-color);
+      padding: 3px 2px;
+    }
+
+    table.gray td:nth-child(5),
+    table.gray td:nth-child(6) {
+      text-align: right;
+    }
+
+    table.gray tbody td {
+      font-size: 13px;
+    }
+
+    table.gray thead {
+      background: var(--highlight-color);
+      border-bottom: 2px solid var(--highlight-color);
+    }
+
+    table.gray thead th {
+      font-size: 15px;
+      font-weight: bold;
+      border-left: 2px solid var(--highlight-color);
+    }
+
+    table.gray thead th:first-child {
+      border-left: none;
+    }
+
+    table.gray #regionsHeadClassic td {
+      text-align: center;
+    }
+
+    table.gray #regionsBodyClassic td {
+      padding-left: 5px;
+      padding-right: 5px;
+    }
+
+    table.gray #regionsBodyClassic td.right-align {
+      text-align: right;
+    }
+
+    table.gray .bar {
+      background-color: var(--vscode-editorWidget-border);
+      width: 100px;
+      height: 100%;
+      display: inline-block;
+    }
+
+    table.gray .toggle {
+      cursor: pointer;
+      display: inline-block;
+      width: 20px;
+      user-select: none;
+    }
+
+    table.gray .sort-button {
+      margin-left: 6px;
+      padding: 0 4px;
+      border: 1px solid var(--vscode-button-secondaryBorder);
+      background: var(--vscode-button-secondaryBackground);
+      color: var(--vscode-button-secondaryForeground);
+      border-radius: 2px;
+      font-size: 10px;
+      line-height: 1.2;
+      vertical-align: middle;
+    }
+
+    table.gray .sort-button[data-active="true"] {
+      border-color: var(--vscode-focusBorder);
     }
   </style>
 </head>
@@ -161,6 +259,10 @@
   <div class="toolbar">
     <button id="refreshButton">Refresh Analyze</button>
     <button id="refreshPathsButton">Change Build Folder</button>
+    <select id="viewSelect" aria-label="Select view">
+      <option value="classic">Classic View</option>
+      <option value="table">Table View</option>
+    </select>
     <input id="searchInput" type="text" placeholder="Search symbols...">
     <button id="caseSensitive" class="toggle-button" type="button" title="Case sensitive search">Aa</button>
     <button id="wholeWord" class="toggle-button" type="button" title="Whole word search">\b</button>
@@ -173,19 +275,43 @@
     <span id="buildFolderPath"></span>
   </div>
 
-  <table id="regionsTable">
-    <thead id="regionsHead">
-      <tr>
-        <th></th>
-        <th class="sortable-header" data-sort="name">Name <span id="sort-name" class="sort-indicator">↕</span></th>
-        <th class="sortable-header" data-sort="address">Address <span id="sort-address" class="sort-indicator">↕</span></th>
-        <th class="sortable-header" data-sort="size">Size <span id="sort-size" class="sort-indicator">↕</span></th>
-        <th>Used</th>
-        <th>Free</th>
-      </tr>
-    </thead>
-    <tbody id="regionsBody"></tbody>
-  </table>
+  <section id="classicView" class="view-pane">
+    <table id="regionsTableClassic" class="gray">
+      <thead id="regionsHeadClassic">
+        <tr>
+          <td></td>
+          <td class="sortable-header" data-sort="name" title="Sort symbols by name">
+            Name <button class="sort-button" data-sort-key="name" data-active="false" aria-label="Sort by name">⇅</button>
+          </td>
+          <td class="sortable-header" data-sort="address" title="Sort symbols by address">
+            Address <button class="sort-button" data-sort-key="address" data-active="false" aria-label="Sort by address">⇅</button>
+          </td>
+          <td class="sortable-header" data-sort="size" title="Sort symbols by size">
+            Size <button class="sort-button" data-sort-key="size" data-active="false" aria-label="Sort by size">⇅</button>
+          </td>
+          <td>Used</td>
+          <td>Free</td>
+        </tr>
+      </thead>
+      <tbody id="regionsBodyClassic"></tbody>
+    </table>
+  </section>
+
+  <section id="tableView" class="view-pane is-hidden">
+    <table id="regionsTable" class="modern">
+      <thead id="regionsHead">
+        <tr>
+          <th></th>
+          <th class="sortable-header" data-sort="name">Name <span id="sort-name" class="sort-indicator">↕</span></th>
+          <th class="sortable-header" data-sort="address">Address <span id="sort-address" class="sort-indicator">↕</span></th>
+          <th class="sortable-header" data-sort="size">Size <span id="sort-size" class="sort-indicator">↕</span></th>
+          <th>Used</th>
+          <th>Free</th>
+        </tr>
+      </thead>
+      <tbody id="regionsBody"></tbody>
+    </table>
+  </section>
 
   <script nonce="${nonce}" src="${scriptUri}"></script>
 </body>
