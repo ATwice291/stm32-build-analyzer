@@ -1024,6 +1024,10 @@ document.addEventListener('DOMContentLoaded', () => {
     searchInput?.addEventListener('input', () => {
         clearTimeout(searchTimeout);
         searchTimeout = setTimeout(() => {
+            if (showSelectedOnly && searchInput.value.trim().length > 0) {
+                showSelectedOnly = false;
+                updateSelectionToggleLabel();
+            }
             const table = viewConfigs[currentView].table;
             if (table) {
                 performSearch(searchInput.value.trim(), table);
