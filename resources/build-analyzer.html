@@ -423,6 +423,28 @@
       background: var(--vscode-list-activeSelectionBackground);
       color: var(--vscode-list-activeSelectionForeground);
     }
+
+    .tooltip-bubble {
+      position: absolute;
+      z-index: 10;
+      padding: 6px 10px;
+      background: var(--vscode-editorHoverWidget-background);
+      color: var(--vscode-editorHoverWidget-foreground);
+      border: 1px solid var(--vscode-editorHoverWidget-border);
+      border-radius: 4px;
+      font-size: 11px;
+      line-height: 1.2;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+      pointer-events: none;
+      opacity: 0;
+      transform: translateY(-4px);
+      transition: opacity 0.15s ease, transform 0.15s ease;
+    }
+
+    .tooltip-bubble.is-visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
   </style>
 </head>
 <body>

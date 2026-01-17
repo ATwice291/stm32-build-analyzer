@@ -515,11 +515,33 @@ function performSearch(query: string, table: HTMLTableElement): void {
     }
 }
 
-function setToolbarMessage(message: string): void {
-    const searchMatchCount = document.getElementById('searchMatchCount');
-    if (searchMatchCount) {
-        searchMatchCount.textContent = message;
+let tooltipTimeout: ReturnType<typeof setTimeout> | null = null;
+
+function showTemporaryTooltip(anchor: HTMLElement, message: string, timeoutMs = 3000): void {
+    let tooltip = document.getElementById('selectionTooltip') as HTMLDivElement | null;
+    if (!tooltip) {
+        tooltip = document.createElement('div');
+        tooltip.id = 'selectionTooltip';
+        tooltip.className = 'tooltip-bubble';
+        document.body.appendChild(tooltip);
     }
+
+    tooltip.textContent = message;
+    tooltip.classList.add('is-visible');
+
+    const anchorRect = anchor.getBoundingClientRect();
+    const scrollX = window.scrollX || document.documentElement.scrollLeft;
+    const scrollY = window.scrollY || document.documentElement.scrollTop;
+
+    tooltip.style.left = `${anchorRect.left + scrollX}px`;
+    tooltip.style.top = `${anchorRect.bottom + scrollY + 6}px`;
+
+    if (tooltipTimeout) {
+        clearTimeout(tooltipTimeout);
+    }
+    tooltipTimeout = setTimeout(() => {
+        tooltip?.classList.remove('is-visible');
+    }, timeoutMs);
 }
 
 function applySorting(field: string, isAscending: boolean, tableBody: HTMLTableSectionElement, view: ViewMode): void {
@@ -950,11 +972,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (!showSelectedOnly) {
             if (hasSearchQuery) {
-                setToolbarMessage('Wyczyść pole wyszukiwania, aby wyświetlić zaznaczone obiekty.');
+                if (toggleSelectionButton) {
+                    showTemporaryTooltip(toggleSelectionButton, 'Clear the search box to show selected items.');
+                }
                 return;
             }
             if (selectedKeys.size === 0) {
-                setToolbarMessage('Zaznacz co najmniej jeden obiekt w kolumnie Sel, aby użyć Show Selected.');
+                if (toggleSelectionButton) {
+                    showTemporaryTooltip(toggleSelectionButton, 'Select at least one item in the Sel column to use Show Selected.');
+                }
                 return;
             }
         }
