@@ -662,6 +662,19 @@ function clearRowSelection(): void {
     selectedRowKey = null;
 }
 
+function syncSelectionCheckboxes(): void {
+    (Object.keys(viewConfigs) as ViewMode[]).forEach(view => {
+        const table = viewConfigs[view].table;
+        if (!table) {
+            return;
+        }
+        table.querySelectorAll<HTMLInputElement>('input.row-select').forEach(input => {
+            const rowKey = input.dataset.key;
+            input.checked = rowKey ? selectedKeys.has(rowKey) : false;
+        });
+    });
+}
+
 function setRowSelection(row: HTMLTableRowElement | null): void {
     clearRowSelection();
     if (!row) {
@@ -787,6 +800,7 @@ function attachTableHandlers(view: ViewMode): void {
                     selectedKeys.delete(rowKey);
                 }
             }
+            syncSelectionCheckboxes();
             if (showSelectedOnly) {
                 const tableElement = viewConfigs[currentView].table;
                 if (tableElement) {
@@ -872,6 +886,7 @@ function setView(nextView: ViewMode): void {
         }
     }
     syncRowSelection();
+    syncSelectionCheckboxes();
 }
 
 function renderTables(regions: Region[]): void {
@@ -888,6 +903,7 @@ function renderTables(regions: Region[]): void {
     });
     syncExpandedState();
     syncRowSelection();
+    syncSelectionCheckboxes();
 }
 
 // Initialize when DOM is ready
@@ -939,6 +955,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 input.checked = false;
             });
         }
+        syncSelectionCheckboxes();
         if (showSelectedOnly) {
             const tableElement = viewConfigs[currentView].table;
             if (tableElement) {
