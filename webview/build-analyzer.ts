@@ -787,8 +787,8 @@ function attachTableHandlers(view: ViewMode): void {
                     selectedKeys.delete(rowKey);
                 }
             }
-            if (showSelectedOnly && currentView === 'table') {
-                const tableElement = viewConfigs.table.table;
+            if (showSelectedOnly) {
+                const tableElement = viewConfigs[currentView].table;
                 if (tableElement) {
                     const searchInput = document.getElementById('searchInput') as HTMLInputElement | null;
                     performSearch(searchInput?.value ?? '', tableElement);
@@ -924,12 +924,10 @@ document.addEventListener('DOMContentLoaded', () => {
     toggleSelectionButton?.addEventListener('click', () => {
         showSelectedOnly = !showSelectedOnly;
         updateSelectionToggleLabel();
-        if (currentView === 'table') {
-            const table = viewConfigs.table.table;
-            if (table) {
-                const searchInput = document.getElementById('searchInput') as HTMLInputElement | null;
-                performSearch(searchInput?.value ?? '', table);
-            }
+        const table = viewConfigs[currentView].table;
+        if (table) {
+            const searchInput = document.getElementById('searchInput') as HTMLInputElement | null;
+            performSearch(searchInput?.value ?? '', table);
         }
     });
 
@@ -941,8 +939,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 input.checked = false;
             });
         }
-        if (showSelectedOnly && currentView === 'table') {
-            const tableElement = viewConfigs.table.table;
+        if (showSelectedOnly) {
+            const tableElement = viewConfigs[currentView].table;
             if (tableElement) {
                 const searchInput = document.getElementById('searchInput') as HTMLInputElement | null;
                 performSearch(searchInput?.value ?? '', tableElement);
