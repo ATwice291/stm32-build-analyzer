@@ -515,6 +515,13 @@ function performSearch(query: string, table: HTMLTableElement): void {
     }
 }
 
+function setToolbarMessage(message: string): void {
+    const searchMatchCount = document.getElementById('searchMatchCount');
+    if (searchMatchCount) {
+        searchMatchCount.textContent = message;
+    }
+}
+
 function applySorting(field: string, isAscending: boolean, tableBody: HTMLTableSectionElement, view: ViewMode): void {
     const allRows = Array.from(tableBody.querySelectorAll<HTMLTableRowElement>('.toggleTr'));
     const nameSelector = getColumnSelector(view, 'name');
@@ -938,11 +945,24 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     toggleSelectionButton?.addEventListener('click', () => {
+        const searchInput = document.getElementById('searchInput') as HTMLInputElement | null;
+        const hasSearchQuery = (searchInput?.value ?? '').trim().length > 0;
+
+        if (!showSelectedOnly) {
+            if (hasSearchQuery) {
+                setToolbarMessage('Wyczyść pole wyszukiwania, aby wyświetlić zaznaczone obiekty.');
+                return;
+            }
+            if (selectedKeys.size === 0) {
+                setToolbarMessage('Zaznacz co najmniej jeden obiekt w kolumnie Sel, aby użyć Show Selected.');
+                return;
+            }
+        }
+
         showSelectedOnly = !showSelectedOnly;
         updateSelectionToggleLabel();
         const table = viewConfigs[currentView].table;
         if (table) {
-            const searchInput = document.getElementById('searchInput') as HTMLInputElement | null;
             performSearch(searchInput?.value ?? '', table);
         }
     });
