@@ -344,8 +344,8 @@ export class BuildFolderResolver {
     };
 
     if (selection.kind === 'manual') {
-    const mapName = path.basename(selection.pair.map).replace(/\.map$/i, '');
-    const elfName = path.basename(selection.pair.elf).replace(/\.elf$/i, '');
+      const mapName = path.basename(selection.pair.map).replace(/\.map$/i, '');
+      const elfName = path.basename(selection.pair.elf).replace(/\.elf$/i, '');
       return {
         label: `$(file-binary) ${elfName} + ${mapName} (Manual)`,
         detail: `${resolveRelative(selection.pair.elf)} | ${resolveRelative(selection.pair.map)}`,
@@ -354,7 +354,6 @@ export class BuildFolderResolver {
     }
 
     const displayName = this.autoDisplayNames.get(selection.folder) ?? this.getBuildDisplayName(selection.folder);
-    const displayNameCount = this.autoNameCounts.get(displayName) ?? 0;
 
     return {
       label: `$(file-binary) ${displayName}`,

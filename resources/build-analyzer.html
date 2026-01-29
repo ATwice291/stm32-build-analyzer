@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="${csp}">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>STM32 Build Analyzer</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+    }
+
+    body {
+      font-family: var(--vscode-font-family);
+      color: var(--vscode-editor-foreground);
+      background: var(--vscode-editor-background);
+      margin: 0;
+      padding: 16px;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .toolbar button {
+      padding: 6px 10px;
+      border-radius: 4px;
+      border: 1px solid var(--vscode-button-border, transparent);
+      background: var(--vscode-button-secondaryBackground);
+      color: var(--vscode-button-secondaryForeground);
+      cursor: pointer;
+    }
+
+    .toolbar button:hover {
+      background: var(--vscode-button-secondaryHoverBackground);
+    }
+
+    #toggleSelectionButton {
+      min-width: 120px;
+      text-align: center;
+    }
+
+    .toolbar input[type="text"] {
+      min-width: 220px;
+      padding: 6px 8px;
+      border-radius: 4px;
+      border: 1px solid var(--vscode-input-border);
+      background: var(--vscode-input-background);
+      color: var(--vscode-input-foreground);
+    }
+
+    .toolbar select {
+      padding: 6px 8px;
+      border-radius: 4px;
+      border: 1px solid var(--vscode-input-border);
+      background: var(--vscode-input-background);
+      color: var(--vscode-input-foreground);
+    }
+
+    .toolbar .toggle-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px 8px;
+      border-radius: 4px;
+      border: 1px solid var(--vscode-button-secondaryBorder, var(--vscode-button-border));
+      background: var(--vscode-button-secondaryBackground);
+      color: var(--vscode-button-secondaryForeground);
+      cursor: pointer;
+      font-size: 12px;
+      user-select: none;
+    }
+
+    .toolbar .toggle-button.active {
+      border-color: var(--vscode-focusBorder);
+      background: var(--vscode-button-hoverBackground, var(--vscode-button-secondaryHoverBackground));
+    }
+
+    #searchMatchCount {
+      font-size: 12px;
+      color: var(--vscode-descriptionForeground);
+      margin-left: 4px;
+    }
+
+    .current-build-folder {
+      margin-bottom: 12px;
+      font-size: 12px;
+      color: var(--vscode-descriptionForeground);
+    }
+
+    body.classic-view {
+      margin: 0;
+      padding: 16px;
+      font-family: var(--vscode-font-family);
+      color: var(--vscode-editor-foreground);
+      background: var(--vscode-editor-background);
+    }
+
+    body.classic-view .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    body.classic-view .toolbar button {
+      padding: 6px 10px;
+      border-radius: 4px;
+      border: 1px solid var(--vscode-button-border, transparent);
+      background: var(--vscode-button-secondaryBackground);
+      color: var(--vscode-button-secondaryForeground);
+      cursor: pointer;
+    }
+
+    body.classic-view .toolbar button:hover {
+      background: var(--vscode-button-secondaryHoverBackground);
+    }
+
+    body.classic-view .toolbar input[type="text"] {
+      min-width: 220px;
+      padding: 6px 8px;
+      border-radius: 4px;
+      border: 1px solid var(--vscode-input-border);
+      background: var(--vscode-input-background);
+      color: var(--vscode-input-foreground);
+    }
+
+    body.classic-view .toolbar input[type="text"]::placeholder {
+      color: var(--vscode-input-placeholderForeground);
+    }
+
+    body.classic-view .toolbar select {
+      padding: 6px 8px;
+      border-radius: 4px;
+      border: 1px solid var(--vscode-input-border);
+      background: var(--vscode-input-background);
+      color: var(--vscode-input-foreground);
+    }
+
+    body.classic-view .toolbar .toggle-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px 8px;
+      border-radius: 4px;
+      border: 1px solid var(--vscode-button-secondaryBorder, var(--vscode-button-border));
+      background: var(--vscode-button-secondaryBackground);
+      color: var(--vscode-button-secondaryForeground);
+      cursor: pointer;
+      font-size: 12px;
+      user-select: none;
+    }
+
+    body.classic-view .toolbar .toggle-button.active {
+      border-color: var(--vscode-focusBorder);
+      background: var(--vscode-button-hoverBackground, var(--vscode-button-secondaryHoverBackground));
+    }
+
+    body.classic-view .current-build-folder {
+      margin-bottom: 12px;
+      font-size: 12px;
+      color: var(--vscode-descriptionForeground);
+    }
+
+    .view-pane {
+      display: block;
+    }
+
+    .view-pane.is-hidden {
+      display: none;
+    }
+
+    table.modern {
+      width: auto;
+      max-width: 100%;
+      display: inline-table;
+      border-collapse: collapse;
+      background: var(--vscode-editor-background);
+    }
+
+    table.modern thead {
+      background: var(--vscode-editorWidget-background);
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    table.modern th,
+    table.modern td {
+      border: 1px solid var(--vscode-editorWidget-border);
+      padding: 6px 16px;
+      font-size: 14px;
+    }
+
+    table.modern th {
+      text-align: left;
+      font-weight: 600;
+    }
+
+    table.modern td.right-align {
+      text-align: right;
+    }
+
+    table.modern .bar {
+      background-color: var(--vscode-editorWidget-border);
+      width: 100px;
+      height: 1.4em;
+      display: inline-block;
+    }
+
+    table.modern .toggle {
+      cursor: pointer;
+      display: inline-flex;
+      width: 20px;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+    }
+
+    table.modern .sortable-header {
+      cursor: pointer;
+      user-select: none;
+    }
+
+    table.modern .sort-indicator {
+      margin-left: 6px;
+      font-size: 0.85em;
+      color: var(--vscode-button-secondaryForeground);
+      border: 1px solid var(--vscode-button-secondaryBorder, var(--vscode-button-border));
+      background: var(--vscode-button-secondaryBackground);
+      border-radius: 4px;
+      padding: 1px 6px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    table.modern .sort-indicator.active {
+      color: var(--vscode-button-secondaryForeground);
+      border-color: var(--vscode-focusBorder);
+      background: var(--vscode-button-hoverBackground, var(--vscode-button-secondaryHoverBackground));
+      font-weight: 600;
+    }
+
+    table.modern .selection-header {
+      width: 64px;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    table.modern .selection-cell {
+      text-align: center;
+    }
+
+    table.modern .clear-selection {
+      margin-left: 4px;
+      border: 1px solid var(--vscode-button-secondaryBorder, var(--vscode-button-border));
+      background: var(--vscode-button-secondaryBackground);
+      color: var(--vscode-button-secondaryForeground);
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-size: 0.8em;
+      cursor: pointer;
+    }
+
+    table.modern .clear-selection:hover {
+      background: var(--vscode-button-secondaryHoverBackground);
+    }
+
+    table.modern .search-highlight {
+      background: var(--vscode-editor-findMatchHighlightBackground);
+      color: var(--vscode-editor-foreground);
+      border-radius: 2px;
+      padding: 0 2px;
+    }
+
+    table.modern a.source-link {
+      color: var(--vscode-textLink-foreground);
+      text-decoration: none;
+    }
+
+    table.modern a.source-link:hover {
+      text-decoration: underline;
+    }
+
+    table.modern tr.row-selected td {
+      background: var(--vscode-list-activeSelectionBackground);
+      color: var(--vscode-list-activeSelectionForeground);
+    }
+
+    table.gray {
+      background-color: var(--vscode-editor-background);
+      color: var(--vscode-editor-foreground);
+      font-family: var(--vscode-editor-font-family);
+      width: 100%;
+      text-align: left;
+      border-collapse: collapse;
+    }
+
+    body.classic-view table.gray {
+      width: auto;
+      max-width: 100%;
+      display: inline-table;
+      text-align: left;
+      border-collapse: collapse;
+    }
+
+    table.gray td,
+    table.gray th {
+      border: 1px solid var(--highlight-color);
+      padding: 3px 2px;
+    }
+
+    table.gray td:nth-child(5),
+    table.gray td:nth-child(6) {
+      text-align: right;
+    }
+
+    table.gray tbody td {
+      font-size: 13px;
+    }
+
+    table.gray thead {
+      background: var(--highlight-color);
+      border-bottom: 2px solid var(--highlight-color);
+    }
+
+    table.gray thead th {
+      font-size: 15px;
+      font-weight: bold;
+      border-left: 2px solid var(--highlight-color);
+    }
+
+    table.gray thead th:first-child {
+      border-left: none;
+    }
+
+    table.gray #regionsHead td {
+      text-align: center;
+    }
+
+    table.gray #regionsBody td {
+      padding-left: 5px;
+      padding-right: 5px;
+    }
+
+    table.gray #regionsBody td.right-align {
+      text-align: right;
+    }
+
+    table.gray .bar {
+      background-color: var(--vscode-editorWidget-border);
+      width: 100px;
+      height: 100%;
+      display: inline-block;
+    }
+
+    table.gray .toggle {
+      cursor: pointer;
+      display: inline-block;
+      width: 20px;
+      user-select: none;
+    }
+
+    table.gray .sort-button {
+      margin-left: 6px;
+      padding: 0 4px;
+      border: 1px solid var(--vscode-button-secondaryBorder);
+      background: var(--vscode-button-secondaryBackground);
+      color: var(--vscode-button-secondaryForeground);
+      border-radius: 2px;
+      font-size: 10px;
+      line-height: 1.2;
+      vertical-align: middle;
+    }
+
+    table.gray .sort-button[data-active="true"] {
+      border-color: var(--vscode-focusBorder);
+    }
+
+    table.gray .selection-header {
+      width: 64px;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    table.gray .selection-cell {
+      text-align: center;
+    }
+
+    table.gray .clear-selection {
+      margin-left: 4px;
+      padding: 0 4px;
+      border: 1px solid var(--vscode-button-secondaryBorder);
+      background: var(--vscode-button-secondaryBackground);
+      color: var(--vscode-button-secondaryForeground);
+      border-radius: 2px;
+      font-size: 10px;
+      line-height: 1.2;
+      vertical-align: middle;
+      cursor: pointer;
+    }
+
+    table.gray .clear-selection:hover {
+      background: var(--vscode-button-secondaryHoverBackground);
+    }
+
+    table.gray a.source-link {
+      color: var(--vscode-textLink-foreground);
+      text-decoration: none;
+    }
+
+    table.gray a.source-link:hover {
+      text-decoration: underline;
+    }
+
+    table.gray tr.row-selected td {
+      background: var(--vscode-list-activeSelectionBackground);
+      color: var(--vscode-list-activeSelectionForeground);
+    }
+
+    .tooltip-bubble {
+      position: absolute;
+      z-index: 10;
+      padding: 6px 10px;
+      background: var(--vscode-editorHoverWidget-background);
+      color: var(--vscode-editorHoverWidget-foreground);
+      border: 1px solid var(--vscode-editorHoverWidget-border);
+      border-radius: 4px;
+      font-size: 11px;
+      line-height: 1.2;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+      pointer-events: none;
+      opacity: 0;
+      transform: translateY(-4px);
+      transition: opacity 0.15s ease, transform 0.15s ease;
+    }
+
+    .tooltip-bubble.is-visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <button id="refreshButton">Refresh Analyze</button>
+    <button id="refreshPathsButton">Change Build Folder</button>
+    <select id="viewSelect" aria-label="Select view">
+      <option value="classic">Classic View</option>
+      <option value="table">Table View</option>
+    </select>
+    <button id="toggleSelectionButton" type="button">Show Selected</button>
+    <input id="searchInput" type="text" placeholder="Search symbols...">
+    <button id="caseSensitive" class="toggle-button" type="button" title="Case sensitive search">Aa</button>
+    <button id="wholeWord" class="toggle-button" type="button" title="Whole word search">\b</button>
+    <button id="useRegex" class="toggle-button" type="button" title="Regex search">.*</button>
+    <span id="searchMatchCount"></span>
+  </div>
+
+  <div class="current-build-folder">
+    <strong>Current Build Folder:</strong>
+    <span id="buildFolderPath"></span>
+  </div>
+
+  <section id="classicView" class="view-pane">
+    <table id="regionsTable" class="gray">
+      <thead id="regionsHead">
+        <tr>
+          <td></td>
+          <td class="selection-header">
+            Sel <button class="clear-selection" id="clearSelectionButtonClassic" type="button" aria-label="Clear selection">✕</button>
+          </td>
+          <td class="sortable-header" data-sort="name" title="Sort symbols by name">
+            Name <button class="sort-button" data-sort-key="name" data-active="false" aria-label="Sort by name">⇅</button>
+          </td>
+          <td class="sortable-header" data-sort="address" title="Sort symbols by address">
+            Address <button class="sort-button" data-sort-key="address" data-active="false" aria-label="Sort by address">⇅</button>
+          </td>
+          <td class="sortable-header" data-sort="size" title="Sort symbols by size">
+            Size <button class="sort-button" data-sort-key="size" data-active="false" aria-label="Sort by size">⇅</button>
+          </td>
+          <td>Used</td>
+          <td>Free</td>
+        </tr>
+      </thead>
+      <tbody id="regionsBody"></tbody>
+    </table>
+  </section>
+
+  <section id="tableView" class="view-pane is-hidden">
+    <table id="regionsTableModern" class="modern">
+      <thead id="regionsHeadModern">
+        <tr>
+          <th></th>
+          <th class="selection-header">
+            Sel <button class="clear-selection" id="clearSelectionButton" type="button" aria-label="Clear selection">✕</button>
+          </th>
+          <th class="sortable-header" data-sort="name">Name <span id="sort-name" class="sort-indicator">↕</span></th>
+          <th class="sortable-header" data-sort="address">Address <span id="sort-address" class="sort-indicator">↕</span></th>
+          <th class="sortable-header" data-sort="size">Size <span id="sort-size" class="sort-indicator">↕</span></th>
+          <th>Used</th>
+          <th>Free</th>
+        </tr>
+      </thead>
+      <tbody id="regionsBodyModern"></tbody>
+    </table>
+  </section>
+
+  <script nonce="${nonce}" src="${scriptUri}"></script>
+</body>
+</html>
