@@ -1,4 +1,13 @@
 # Changelog
+## [1.1.4] – 2026-01-29
+
+### Added
+- Object filtering functionality, including a new selection column and controls to toggle between showing selected objects and all objects.
+- Additional combobox for selecting the preferred view.
+- New additional table view.
+
+### Changed
+- Search functionality extended with advanced options, including whole-word search and regular expression (regex) search.
 
 ## [1.1.3] – 2026‑01‑15
 
