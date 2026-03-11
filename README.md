@@ -1,5 +1,11 @@
 # STM32 Build Analyzer
 
+# Attention! 
+
+## This extension is no longer maintained. Please use STM32 Build Analyzer (Enhanced):
+📦 [GitHub](https://github.com/niwciu/stm32-build-analyzer/tree/master)
+📥 [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=niwciu.stm32-build-analyzer-enhanced)
+
 ## Overview
 
 This is my first attempt to make my own plugin for VSCode
